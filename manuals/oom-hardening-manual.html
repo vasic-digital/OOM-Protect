@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="System post-mortem 2026-04-28" />
+  <meta name="dcterms.date" content="2026-04-28" />
+  <title>oom-hardening — User Manual</title>
+  <style>
+
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ background-color: #f8f8f8; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ef2929; } 
+code span.an { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.at { color: #204a87; } 
+code span.bn { color: #0000cf; } 
+code span.cf { color: #204a87; font-weight: bold; } 
+code span.ch { color: #4e9a06; } 
+code span.cn { color: #8f5902; } 
+code span.co { color: #8f5902; font-style: italic; } 
+code span.cv { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.do { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.dt { color: #204a87; } 
+code span.dv { color: #0000cf; } 
+code span.er { color: #a40000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #0000cf; } 
+code span.fu { color: #204a87; font-weight: bold; } 
+code span.im { } 
+code span.in { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.kw { color: #204a87; font-weight: bold; } 
+code span.op { color: #ce5c00; font-weight: bold; } 
+code span.ot { color: #8f5902; } 
+code span.pp { color: #8f5902; font-style: italic; } 
+code span.sc { color: #ce5c00; font-weight: bold; } 
+code span.ss { color: #4e9a06; } 
+code span.st { color: #4e9a06; } 
+code span.va { color: #000000; } 
+code span.vs { color: #4e9a06; } 
+code span.wa { color: #8f5902; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+@page {
+size: A4;
+margin: 22mm 18mm 22mm 18mm;
+@bottom-center {
+content: counter(page) " / " counter(pages);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+@top-right {
+content: string(doctitle);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+}
+html { font-size: 11pt; }
+body {
+font-family: "DejaVu Sans", "Liberation Sans", "Helvetica", sans-serif;
+line-height: 1.5;
+color: #1a1a1a;
+max-width: 920px;
+margin: 24px auto;
+padding: 0 18px 48px;
+background: #fff;
+hyphens: auto;
+}
+
+header.title-block {
+border-bottom: 2px solid #2b6cb0;
+padding-bottom: 12px;
+margin-bottom: 28px;
+}
+h1.title {
+font-size: 26pt;
+color: #1a365d;
+margin: 0 0 4px;
+string-set: doctitle content();
+}
+p.subtitle, p.author, p.date {
+margin: 2px 0;
+color: #555;
+font-size: 10.5pt;
+}
+
+h1, h2, h3, h4, h5, h6 {
+font-family: "DejaVu Sans", sans-serif;
+color: #1a365d;
+page-break-after: avoid;
+line-height: 1.25;
+}
+h1 { font-size: 20pt; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-top: 32px; }
+h2 { font-size: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-top: 26px; }
+h3 { font-size: 13pt; margin-top: 22px; color: #2c5282; }
+h4 { font-size: 11.5pt; margin-top: 18px; color: #2c5282; }
+
+p { margin: 0.6em 0; }
+ul, ol { margin: 0.6em 0 0.6em 22px; padding: 0; }
+li { margin: 4px 0; }
+
+code {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 0.92em;
+background: #f1f5f9;
+color: #1a202c;
+padding: 1px 5px;
+border-radius: 3px;
+border: 1px solid #e2e8f0;
+}
+
+pre {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 9.5pt;
+background: #1a202c;
+color: #f7fafc;
+padding: 12px 14px;
+border-radius: 6px;
+overflow-x: auto;
+page-break-inside: avoid;
+line-height: 1.45;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+pre code {
+background: transparent;
+color: inherit;
+border: none;
+padding: 0;
+font-size: inherit;
+}
+
+blockquote {
+margin: 0.8em 0;
+padding: 8px 14px;
+border-left: 4px solid #4299e1;
+background: #ebf8ff;
+color: #2a4365;
+border-radius: 0 4px 4px 0;
+}
+
+table {
+border-collapse: collapse;
+width: 100%;
+margin: 1em 0;
+font-size: 10pt;
+page-break-inside: avoid;
+}
+th, td {
+border: 1px solid #cbd5e0;
+padding: 6px 9px;
+text-align: left;
+vertical-align: top;
+}
+thead th {
+background: #2c5282;
+color: #fff;
+font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+
+a { color: #2b6cb0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+nav#TOC {
+background: #f7fafc;
+border: 1px solid #e2e8f0;
+border-radius: 6px;
+padding: 14px 22px 14px 14px;
+margin: 16px 0 28px;
+page-break-after: always;
+}
+nav#TOC > ul { list-style: none; margin-left: 6px; padding: 0; }
+nav#TOC ul ul { margin-left: 18px; }
+nav#TOC > h2 { margin-top: 0; border: none; font-size: 13pt; }
+nav#TOC li { margin: 3px 0; }
+
+hr {
+border: none;
+border-top: 1px solid #cbd5e0;
+margin: 24px 0;
+}
+
+blockquote.note { border-left-color: #38b2ac; background: #e6fffa; color: #234e52; }
+blockquote.warning { border-left-color: #ed8936; background: #fffaf0; color: #7b341e; }
+blockquote.danger { border-left-color: #e53e3e; background: #fff5f5; color: #742a2a; }
+blockquote.success { border-left-color: #38a169; background: #f0fff4; color: #22543d; }
+
+@media print {
+body { font-size: 10pt; max-width: none; margin: 0; padding: 0; }
+a { color: #1a365d; }
+pre { font-size: 8.8pt; }
+nav#TOC { page-break-after: always; }
+h1, h2 { page-break-before: auto; }
+h1 { page-break-before: always; }
+h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
+}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">oom-hardening — User Manual</h1>
+<p class="subtitle">Workstation OOM hardening for systemd Linux</p>
+<p class="author">System post-mortem 2026-04-28</p>
+<p class="date">2026-04-28</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#quick-start" id="toc-quick-start">Quick Start</a></li>
+<li><a href="#what-the-script-installs" id="toc-what-the-script-installs">What the script installs</a></li>
+<li><a href="#command-reference" id="toc-command-reference">Command
+Reference</a>
+<ul>
+<li><a href="#modes" id="toc-modes">Modes</a></li>
+<li><a href="#options" id="toc-options">Options</a></li>
+<li><a href="#pre-flight-checks" id="toc-pre-flight-checks">Pre-flight
+checks</a></li>
+</ul></li>
+<li><a href="#tuning-the-limits" id="toc-tuning-the-limits">Tuning the
+limits</a></li>
+<li><a href="#verification" id="toc-verification">Verification</a>
+<ul>
+<li><a href="#stress-test" id="toc-stress-test">Stress test</a></li>
+</ul></li>
+<li><a href="#rollback-uninstall" id="toc-rollback-uninstall">Rollback
+&amp; Uninstall</a>
+<ul>
+<li><a href="#rollback-best-for-i-want-everything-back-exactly" id="toc-rollback-best-for-i-want-everything-back-exactly">Rollback (best
+for “I want everything back exactly”)</a></li>
+<li><a href="#uninstall-best-for-i-just-want-this-scripts-stuff-gone" id="toc-uninstall-best-for-i-just-want-this-scripts-stuff-gone">Uninstall
+(best for “I just want this script’s stuff gone”)</a></li>
+<li><a href="#manual-reversion" id="toc-manual-reversion">Manual
+reversion</a></li>
+</ul></li>
+<li><a href="#troubleshooting" id="toc-troubleshooting">Troubleshooting</a>
+<ul>
+<li><a href="#systemd-oomd.service-not-found" id="toc-systemd-oomd.service-not-found">“systemd-oomd.service NOT
+found”</a></li>
+<li><a href="#memoryaccountingno-on-user-x.slice-warning-from-oom-runner" id="toc-memoryaccountingno-on-user-x.slice-warning-from-oom-runner">“MemoryAccounting=no
+on user-X.slice” warning from oom-runner</a></li>
+<li><a href="#stress-ng-survived-the-16g-alloc" id="toc-stress-ng-survived-the-16g-alloc">“stress-ng survived the 16G
+alloc”</a></li>
+<li><a href="#i-lost-a-tmux-session-after-applying" id="toc-i-lost-a-tmux-session-after-applying">“I lost a tmux session
+after applying”</a></li>
+<li><a href="#sysctls-keep-being-overridden-by-something-else" id="toc-sysctls-keep-being-overridden-by-something-else">“Sysctls keep
+being overridden by something else”</a></li>
+</ul></li>
+<li><a href="#faq" id="toc-faq">FAQ</a></li>
+<li><a href="#companion-tools" id="toc-companion-tools">Companion
+Tools</a></li>
+<li><a href="#appendix-a-full-file-contents" id="toc-appendix-a-full-file-contents">Appendix A — Full file
+contents</a>
+<ul>
+<li><a href="#etcsystemdoomd.conf.d50-defaults.conf" id="toc-etcsystemdoomd.conf.d50-defaults.conf"><code>/etc/systemd/oomd.conf.d/50-defaults.conf</code></a></li>
+<li><a href="#etcsystemdsystemuser-.slice.d50-oomd.conf" id="toc-etcsystemdsystemuser-.slice.d50-oomd.conf"><code>/etc/systemd/system/user-.slice.d/50-oomd.conf</code></a></li>
+<li><a href="#etcsystemdsystemuser-.slice.d50-memory.conf" id="toc-etcsystemdsystemuser-.slice.d50-memory.conf"><code>/etc/systemd/system/user-.slice.d/50-memory.conf</code></a></li>
+<li><a href="#etcsystemdlogind.conf.d10-no-poweroff.conf" id="toc-etcsystemdlogind.conf.d10-no-poweroff.conf"><code>/etc/systemd/logind.conf.d/10-no-poweroff.conf</code></a></li>
+<li><a href="#etcsystemdcoredump.conf.d50-keep.conf" id="toc-etcsystemdcoredump.conf.d50-keep.conf"><code>/etc/systemd/coredump.conf.d/50-keep.conf</code></a></li>
+<li><a href="#etcsysctl.d99-mem.conf" id="toc-etcsysctl.d99-mem.conf"><code>/etc/sysctl.d/99-mem.conf</code></a></li>
+</ul></li>
+<li><a href="#appendix-b-exit-codes" id="toc-appendix-b-exit-codes">Appendix B — Exit codes</a></li>
+</ul>
+</nav>
+<section id="overview" class="level1">
+<h1>Overview</h1>
+<p><code>oom-hardening.sh</code> is a one-shot, idempotent installer
+that applies <strong>workstation-grade memory-pressure
+protection</strong> to a systemd Linux host. It exists because of the
+2026-04-28 incident on host <code>nezha</code>, where a 60.6 GiB
+user-slice on a 62 GiB machine caused the kernel OOM killer to SIGKILL
+the systemd user-manager itself, taking down ~60 active processes
+(Claude Code, Android build, MCP servers, IDE, browsers, terminals) and
+ultimately rebooting the laptop. See <code>Crash_Report.md</code> for
+the full post-mortem.</p>
+<p>The script:</p>
+<ol type="1">
+<li>Enables <code>systemd-oomd</code> (proactive userspace OOM
+daemon).</li>
+<li>Sets hard cgroup memory limits on <code>user-.slice</code> so the
+user-manager can never again be the OOM victim.</li>
+<li>Applies VM tuning (<code>vm.swappiness</code>,
+<code>min_free_kbytes</code>, dirty ratios).</li>
+<li>Neutralises accidental short-press power-off via
+<code>systemd-logind</code>.</li>
+<li>Keeps coredumps so the next incident leaves real evidence.</li>
+</ol>
+<p>It does <strong>not</strong> touch fstab, swap, GRUB, or anything
+that could prevent the next boot. Every change is reversible.</p>
+<hr />
+</section>
+<section id="quick-start" class="level1">
+<h1>Quick Start</h1>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Read what would change without changing anything</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> ~/Downloads/oom-hardening.sh <span class="at">--dry-run</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Apply (interactive — prompts y/N before making changes)</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> bash ~/Downloads/oom-hardening.sh</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. (Optional) Stress-test the protection</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">-fu</span> systemd-oomd <span class="kw">&amp;</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="ex">stress-ng</span> <span class="at">--vm</span> 4 <span class="at">--vm-bytes</span> 16G <span class="at">--vm-keep</span> <span class="at">--timeout</span> 60s</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Expected: stress-ng dies, your shell/IDE/tmux/browsers SURVIVE.</span></span></code></pre></div>
+<hr />
+</section>
+<section id="what-the-script-installs" class="level1">
+<h1>What the script installs</h1>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>File</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/etc/systemd/oomd.conf.d/50-defaults.conf</code></td>
+<td>Global <code>systemd-oomd</code> thresholds (kill on swap &gt; 80%
+or sustained memory pressure &gt; 50% for 20 s)</td>
+</tr>
+<tr>
+<td><code>/etc/systemd/system/user-.slice.d/50-oomd.conf</code></td>
+<td>Tells <code>systemd-oomd</code> to manage all user slices</td>
+</tr>
+<tr>
+<td><code>/etc/systemd/system/user-.slice.d/50-memory.conf</code></td>
+<td>Cgroup ceiling on every user slice: <code>MemoryHigh=48G</code>,
+<code>MemoryMax=56G</code>, <code>MemorySwapMax=8G</code></td>
+</tr>
+<tr>
+<td><code>/etc/systemd/logind.conf.d/10-no-poweroff.conf</code></td>
+<td>Short power-button tap ignored; long-press still powers off</td>
+</tr>
+<tr>
+<td><code>/etc/systemd/coredump.conf.d/50-keep.conf</code></td>
+<td>Coredump retention policy (10 GiB cap, keep 20 GiB free)</td>
+</tr>
+<tr>
+<td><code>/etc/sysctl.d/99-mem.conf</code></td>
+<td>VM tuning (lower swappiness, larger <code>min_free_kbytes</code>,
+smaller dirty queues)</td>
+</tr>
+</tbody>
+</table>
+<p>The script also performs runtime side-effects:</p>
+<ul>
+<li><code>systemctl daemon-reload</code></li>
+<li><code>systemctl enable --now systemd-oomd.{socket,service}</code></li>
+<li><code>systemctl set-property user-1000.slice MemoryMax=… MemoryHigh=… MemorySwapMax=…</code>
+(live, no relogin needed)</li>
+<li><code>sysctl --system</code></li>
+<li><code>systemctl restart systemd-journald</code> (for coredump.conf
+reload)</li>
+</ul>
+<p>It does <strong>not</strong> restart <code>systemd-logind</code>
+(that ends your GUI session). After applying, run that yourself when
+convenient:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart systemd-logind</span></code></pre></div>
+<hr />
+</section>
+<section id="command-reference" class="level1">
+<h1>Command Reference</h1>
+<section id="modes" class="level2">
+<h2>Modes</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Form</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sudo bash oom-hardening.sh</code></td>
+<td>Apply (interactive)</td>
+</tr>
+<tr>
+<td><code>sudo bash oom-hardening.sh --yes</code></td>
+<td>Apply (non-interactive)</td>
+</tr>
+<tr>
+<td><code>bash oom-hardening.sh --dry-run</code></td>
+<td>Preview only — no root needed, changes nothing</td>
+</tr>
+<tr>
+<td><code>sudo bash oom-hardening.sh --rollback DIR</code></td>
+<td>Restore from a previous backup</td>
+</tr>
+<tr>
+<td><code>sudo bash oom-hardening.sh --uninstall</code></td>
+<td>Remove drop-ins this script wrote</td>
+</tr>
+<tr>
+<td><code>bash oom-hardening.sh --help</code></td>
+<td>Show usage</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="options" class="level2">
+<h2>Options</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Option</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Print exactly what would change. Diff-mode for any pre-existing
+files. Logs to <code>/tmp/oom-hardening-dryrun.log</code>.</td>
+</tr>
+<tr>
+<td><code>--yes</code>, <code>-y</code></td>
+<td>Skip confirmation prompt. Required if stdin is not a TTY
+(e.g. piping the script).</td>
+</tr>
+<tr>
+<td><code>--rollback DIR</code></td>
+<td>Restore <code>/etc</code> files from
+<code>/root/oom-hardening-backup-&lt;TS&gt;/</code>. Reads the backup’s
+<code>MANIFEST.txt</code>.</td>
+</tr>
+<tr>
+<td><code>--uninstall</code></td>
+<td>Remove only files whose contents are bit-identical to ours. Manually
+edited copies are skipped.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="pre-flight-checks" class="level2">
+<h2>Pre-flight checks</h2>
+<p>The script verifies all of these before touching anything:</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Check</th>
+<th>Pass criterion</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Privileges</td>
+<td>Running as root (except <code>--dry-run</code>)</td>
+</tr>
+<tr>
+<td>systemd version</td>
+<td>≥ 248 (warn otherwise — <code>ManagedOOM*</code> may be
+missing)</td>
+</tr>
+<tr>
+<td>Kernel version</td>
+<td>≥ 5.15 (warn otherwise — PSI / cgroup v2 may be incomplete)</td>
+</tr>
+<tr>
+<td>cgroup hierarchy</td>
+<td>cgroup v2 unified at <code>/sys/fs/cgroup</code></td>
+</tr>
+<tr>
+<td>PSI</td>
+<td><code>/proc/pressure/memory</code> readable</td>
+</tr>
+<tr>
+<td>RAM</td>
+<td>warn if &lt; 16 GiB (the default 48G/56G limits make no sense for
+tiny machines)</td>
+</tr>
+<tr>
+<td><code>systemd-oomd.service</code></td>
+<td>unit file present (warn + skip enable step if missing)</td>
+</tr>
+<tr>
+<td><code>user-1000.slice</code></td>
+<td>active (otherwise live limits are deferred to next login)</td>
+</tr>
+<tr>
+<td>Free space on <code>/</code></td>
+<td>≥ 100 MiB (for backups)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+</section>
+</section>
+<section id="tuning-the-limits" class="level1">
+<h1>Tuning the limits</h1>
+<p>Edit the script before running, or edit
+<code>/etc/systemd/system/user-.slice.d/50-memory.conf</code> after, and
+re-run:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[Slice]</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="dt">MemoryAccounting</span><span class="ot">=</span><span class="kw">yes</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="dt">MemoryHigh</span><span class="ot">=</span><span class="st">48G    # soft throttle — kernel reclaims aggressively above</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="dt">MemoryMax</span><span class="ot">=</span><span class="st">56G     # hard ceiling — anything over gets OOM-killed inside the slice</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="dt">MemorySwapMax</span><span class="ot">=</span><span class="st">8G  # cap swap to prevent thrashing</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="dt">TasksMax</span><span class="ot">=</span><span class="st">infinity</span></span></code></pre></div>
+<p><strong>Sizing rule of thumb:</strong> leave at least <strong>6–8
+GiB</strong> headroom for the kernel, system slice, and
+buffer/cache.</p>
+<table>
+<thead>
+<tr>
+<th>Total RAM</th>
+<th>Suggested <code>MemoryHigh</code></th>
+<th>Suggested <code>MemoryMax</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>16 GiB</td>
+<td>10G</td>
+<td>12G</td>
+</tr>
+<tr>
+<td>32 GiB</td>
+<td>22G</td>
+<td>26G</td>
+</tr>
+<tr>
+<td>64 GiB</td>
+<td><strong>48G</strong></td>
+<td><strong>56G</strong> <em>(default)</em></td>
+</tr>
+<tr>
+<td>128 GiB</td>
+<td>104G</td>
+<td>116G</td>
+</tr>
+</tbody>
+</table>
+<p>Apply changes without rebooting:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl daemon-reload</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl set-property user-1000.slice MemoryHigh=48G MemoryMax=56G MemorySwapMax=8G</span></code></pre></div>
+<hr />
+</section>
+<section id="verification" class="level1">
+<h1>Verification</h1>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># OOM daemon is up and watching</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">systemctl</span> is-active systemd-oomd.service     <span class="co"># → active</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="ex">oomctl</span>                                        <span class="co"># shows monitored cgroups + thresholds</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Live cgroup limits applied</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="ex">systemctl</span> show user-1000.slice <span class="at">-p</span> MemoryMax,MemoryHigh,MemorySwapMax,MemoryAccounting</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Active sysctls</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="ex">sysctl</span> vm.swappiness vm.min_free_kbytes vm.overcommit_memory <span class="dt">\</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>       vm.overcommit_ratio vm.vfs_cache_pressure <span class="dt">\</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>       vm.dirty_background_ratio vm.dirty_ratio</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Pressure (run during heavy work)</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span> /proc/pressure/memory</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span> /proc/pressure/cpu</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span> /proc/pressure/io</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Logind power-key handling</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="ex">busctl</span> get-property org.freedesktop.login1 /org/freedesktop/login1 <span class="dt">\</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>       org.freedesktop.login1.Manager HandlePowerKey   <span class="co"># → &quot;ignore&quot;</span></span></code></pre></div>
+<section id="stress-test" class="level2">
+<h2>Stress test</h2>
+<p>This <strong>must</strong> kill <code>stress-ng</code> and leave your
+shell/IDE/tmux alive. If your whole session dies again, re-investigate
+before trusting the config:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Watch in one terminal</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">-fu</span> systemd-oomd</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Run in another</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="ex">stress-ng</span> <span class="at">--vm</span> 4 <span class="at">--vm-bytes</span> 16G <span class="at">--vm-keep</span> <span class="at">--timeout</span> 60s</span></code></pre></div>
+<p>Expected log line:</p>
+<pre><code>systemd-oomd[…]: Killed /user.slice/user-1000.slice/…/oomrun-stress-….scope due to memory pressure …</code></pre>
+<hr />
+</section>
+</section>
+<section id="rollback-uninstall" class="level1">
+<h1>Rollback &amp; Uninstall</h1>
+<section id="rollback-best-for-i-want-everything-back-exactly" class="level2">
+<h2>Rollback (best for “I want everything back exactly”)</h2>
+<p>The installer writes every overwritten file to
+<code>/root/oom-hardening-backup-&lt;TS&gt;/</code> and includes a
+<code>MANIFEST.txt</code>. To restore:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> bash ~/Downloads/oom-hardening.sh <span class="at">--rollback</span> /root/oom-hardening-backup-20260428-194355</span></code></pre></div>
+<p>This will:</p>
+<ul>
+<li>Restore each managed file from its backup (or remove it if it didn’t
+exist before)</li>
+<li><code>systemctl daemon-reload</code></li>
+<li>Print follow-up commands for <code>systemd-oomd</code> /
+sysctls</li>
+</ul>
+</section>
+<section id="uninstall-best-for-i-just-want-this-scripts-stuff-gone" class="level2">
+<h2>Uninstall (best for “I just want this script’s stuff gone”)</h2>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> bash ~/Downloads/oom-hardening.sh <span class="at">--uninstall</span></span></code></pre></div>
+<p>Removes only files whose contents match exactly what the script
+wrote. Hand-edited or unrelated files are left alone.</p>
+</section>
+<section id="manual-reversion" class="level2">
+<h2>Manual reversion</h2>
+<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Disable systemd-oomd</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl disable <span class="at">--now</span> systemd-oomd.service systemd-oomd.socket</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Drop a single drop-in</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm /etc/systemd/system/user-.slice.d/50-memory.conf</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl daemon-reload</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Reset live limits on the running slice</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl set-property user-1000.slice MemoryMax=infinity MemoryHigh=infinity MemorySwapMax=infinity</span></code></pre></div>
+<hr />
+</section>
+</section>
+<section id="troubleshooting" class="level1">
+<h1>Troubleshooting</h1>
+<section id="systemd-oomd.service-not-found" class="level2">
+<h2>“systemd-oomd.service NOT found”</h2>
+<p><code>systemd-oomd</code> is packaged separately on some distros. The
+drop-ins still install; you just need to install the daemon and
+re-run:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ALT Linux / Debian / Ubuntu</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install systemd-oomd-defaults</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Or</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt install systemd-oomd</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Fedora-like</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> dnf install systemd-oomd-defaults</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Then</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> bash ~/Downloads/oom-hardening.sh <span class="at">--yes</span></span></code></pre></div>
+</section>
+<section id="memoryaccountingno-on-user-x.slice-warning-from-oom-runner" class="level2">
+<h2>“MemoryAccounting=no on user-X.slice” warning from oom-runner</h2>
+<p>You ran <code>oom-runner.sh</code> before applying this script, or
+skipped the slice drop-in. Re-run <code>oom-hardening.sh</code>.
+Verify:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ex">systemctl</span> show <span class="at">-p</span> MemoryAccounting <span class="at">--value</span> <span class="st">&quot;user-</span><span class="va">$(</span><span class="fu">id</span> <span class="at">-u</span><span class="va">)</span><span class="st">.slice&quot;</span>   <span class="co"># → yes</span></span></code></pre></div>
+</section>
+<section id="stress-ng-survived-the-16g-alloc" class="level2">
+<h2>“stress-ng survived the 16G alloc”</h2>
+<p>Causes in order of likelihood:</p>
+<ol type="1">
+<li>The script wasn’t applied (or was rolled back). Verify
+<code>oomctl</code>.</li>
+<li><code>MemoryAccounting=no</code> somewhere in the parent slice
+chain. Apply this script.</li>
+<li>Cgroup v2 not unified (rare on modern kernels). Run
+<code>mount | grep cgroup</code>.</li>
+<li><code>systemd-oomd</code> is installed but socket/service is masked:
+<code>systemctl unmask systemd-oomd.{socket,service}</code>.</li>
+</ol>
+</section>
+<section id="i-lost-a-tmux-session-after-applying" class="level2">
+<h2>“I lost a tmux session after applying”</h2>
+<p>The drop-ins themselves don’t kill any session. But if you applied
+the script while running a workload that was already over
+<code>MemoryMax=56G</code>, the kernel may immediately enforce the
+ceiling. Trim the workload or relax the limit, then re-apply.</p>
+</section>
+<section id="sysctls-keep-being-overridden-by-something-else" class="level2">
+<h2>“Sysctls keep being overridden by something else”</h2>
+<p>Check load order:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemd-sysctl <span class="at">--cat-config</span> <span class="kw">|</span> <span class="fu">grep</span> <span class="at">-E</span> <span class="st">&quot;vm\.(swappiness|dirty|overcommit)&quot;</span></span></code></pre></div>
+<p>Files in <code>/usr/lib/sysctl.d/</code>,
+<code>/run/sysctl.d/</code>, and <code>/etc/sysctl.d/</code> are
+processed in lexicographic order. The script writes
+<code>99-mem.conf</code> so it runs late and wins.</p>
+<hr />
+</section>
+</section>
+<section id="faq" class="level1">
+<h1>FAQ</h1>
+<p><strong>Q. Why 48G/56G specifically?</strong> The host has 62 GiB.
+Leaving ~6 GiB headroom for kernel + system slice + page cache is the
+smallest safe margin. 48 GiB soft / 56 GiB hard gives you 8 GiB of
+“kernel reclaims aggressively but you’re not killed yet” zone before the
+wall.</p>
+<p><strong>Q. Why not just buy more RAM?</strong> The CPU on this host
+(i7-1165G7, Tiger Lake) is hard-capped at 64 GiB by the integrated
+memory controller. Even 64 GiB DDR4 SODIMMs (which exist) will not be
+addressed beyond 64 GiB total. See <code>Crash_Report.md</code> §6.</p>
+<p><strong>Q. Will this slow down builds?</strong>
+No. <code>MemoryHigh</code> only kicks in when you exceed 48 GiB; below
+that the kernel does its normal thing. <code>vm.swappiness=10</code>
+actually <em>speeds up</em> memory-pressure scenarios because the kernel
+won’t push hot pages to swap prematurely.</p>
+<p><strong>Q. Can I run this on a server?</strong> Yes, but tune
+<code>MemoryMax</code> first — the defaults are workstation-sized.
+Servers should typically reserve 10–15% of RAM for kernel/buffers, not
+the fixed 8 GiB this script uses.</p>
+<p><strong>Q. Does this conflict with <code>earlyoom</code> /
+<code>nohang</code> / other OOM daemons?</strong> Yes — they all watch
+PSI. Pick one. Disable the others before enabling
+<code>systemd-oomd</code>:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl disable <span class="at">--now</span> earlyoom.service nohang.service <span class="dv">2</span><span class="op">&gt;</span>/dev/null</span></code></pre></div>
+<p><strong>Q. The script wrote backups to <code>/root/</code>. Can I
+move them?</strong> Yes — the rollback mode reads the directory you
+point it at. Move the directory anywhere. Just keep
+<code>MANIFEST.txt</code> next to the backed-up files.</p>
+<p><strong>Q. Why does the script not restart
+<code>systemd-logind</code> automatically?</strong> Restarting it ends
+your active GUI session, including any unsaved work in graphical apps.
+The script tells you to do it manually when ready. Logind restart is
+only needed for the <code>HandlePowerKey=ignore</code> change to take
+effect; the cgroup and oomd changes are applied immediately without
+it.</p>
+<hr />
+</section>
+<section id="companion-tools" class="level1">
+<h1>Companion Tools</h1>
+<ul>
+<li><strong><code>oom-runner.sh</code></strong> — wraps individual
+workloads (Claude, MCP servers, builds, browsers) in their own bounded
+scopes/services <em>inside</em> the umbrella set by this hardening
+script. See <code>oom-runner-manual.md</code>.</li>
+<li><strong><code>Crash_Report.md</code></strong> — full post-mortem of
+the 2026-04-28 incident.</li>
+</ul>
+<hr />
+</section>
+<section id="appendix-a-full-file-contents" class="level1">
+<h1>Appendix A — Full file contents</h1>
+<section id="etcsystemdoomd.conf.d50-defaults.conf" class="level2">
+<h2><code>/etc/systemd/oomd.conf.d/50-defaults.conf</code></h2>
+<div class="sourceCode" id="cb15"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[OOM]</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="dt">SwapUsedLimit</span><span class="ot">=</span><span class="st">80%</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="dt">DefaultMemoryPressureLimit</span><span class="ot">=</span><span class="st">50%</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="dt">DefaultMemoryPressureDurationSec</span><span class="ot">=</span><span class="st">20s</span></span></code></pre></div>
+</section>
+<section id="etcsystemdsystemuser-.slice.d50-oomd.conf" class="level2">
+<h2><code>/etc/systemd/system/user-.slice.d/50-oomd.conf</code></h2>
+<div class="sourceCode" id="cb16"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[Slice]</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="dt">ManagedOOMSwap</span><span class="ot">=</span><span class="st">kill</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="dt">ManagedOOMMemoryPressure</span><span class="ot">=</span><span class="st">kill</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="dt">ManagedOOMMemoryPressureLimit</span><span class="ot">=</span><span class="st">50%</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="dt">ManagedOOMMemoryPressureDurationSec</span><span class="ot">=</span><span class="st">20s</span></span></code></pre></div>
+</section>
+<section id="etcsystemdsystemuser-.slice.d50-memory.conf" class="level2">
+<h2><code>/etc/systemd/system/user-.slice.d/50-memory.conf</code></h2>
+<div class="sourceCode" id="cb17"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[Slice]</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="dt">MemoryAccounting</span><span class="ot">=</span><span class="kw">yes</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="dt">MemoryHigh</span><span class="ot">=</span><span class="st">48G</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="dt">MemoryMax</span><span class="ot">=</span><span class="st">56G</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="dt">MemorySwapMax</span><span class="ot">=</span><span class="st">8G</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="dt">TasksMax</span><span class="ot">=</span><span class="st">infinity</span></span></code></pre></div>
+</section>
+<section id="etcsystemdlogind.conf.d10-no-poweroff.conf" class="level2">
+<h2><code>/etc/systemd/logind.conf.d/10-no-poweroff.conf</code></h2>
+<div class="sourceCode" id="cb18"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[Login]</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="dt">HandlePowerKey</span><span class="ot">=</span><span class="st">ignore</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="dt">HandlePowerKeyLongPress</span><span class="ot">=</span><span class="st">poweroff</span></span></code></pre></div>
+</section>
+<section id="etcsystemdcoredump.conf.d50-keep.conf" class="level2">
+<h2><code>/etc/systemd/coredump.conf.d/50-keep.conf</code></h2>
+<div class="sourceCode" id="cb19"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[Coredump]</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="dt">Storage</span><span class="ot">=</span><span class="st">external</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="dt">Compress</span><span class="ot">=</span><span class="kw">yes</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="dt">ProcessSizeMax</span><span class="ot">=</span><span class="st">8G</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="dt">ExternalSizeMax</span><span class="ot">=</span><span class="st">8G</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="dt">MaxUse</span><span class="ot">=</span><span class="st">10G</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="dt">KeepFree</span><span class="ot">=</span><span class="st">20G</span></span></code></pre></div>
+</section>
+<section id="etcsysctl.d99-mem.conf" class="level2">
+<h2><code>/etc/sysctl.d/99-mem.conf</code></h2>
+<div class="sourceCode" id="cb20"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="dt">vm.swappiness </span><span class="ot">=</span><span class="st"> </span><span class="dv">10</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="dt">vm.min_free_kbytes </span><span class="ot">=</span><span class="st"> </span><span class="dv">262144</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="dt">vm.overcommit_memory </span><span class="ot">=</span><span class="st"> </span><span class="dv">0</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="dt">vm.overcommit_ratio </span><span class="ot">=</span><span class="st"> </span><span class="dv">80</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="dt">vm.vfs_cache_pressure </span><span class="ot">=</span><span class="st"> </span><span class="dv">50</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a><span class="dt">vm.dirty_background_ratio </span><span class="ot">=</span><span class="st"> </span><span class="dv">5</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="dt">vm.dirty_ratio </span><span class="ot">=</span><span class="st"> </span><span class="dv">15</span></span></code></pre></div>
+<hr />
+</section>
+</section>
+<section id="appendix-b-exit-codes" class="level1">
+<h1>Appendix B — Exit codes</h1>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Success</td>
+</tr>
+<tr>
+<td>1</td>
+<td>User error (bad arg, missing dir, refused confirmation)</td>
+</tr>
+<tr>
+<td>Other</td>
+<td>Step-specific failure — see <code>/var/log/oom-hardening.log</code>
+and check the rollback hint printed by the script</td>
+</tr>
+</tbody>
+</table>
+</section>
+</body>
+</html>

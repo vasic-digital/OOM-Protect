@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="System post-mortem 2026-04-28" />
+  <meta name="dcterms.date" content="2026-04-28" />
+  <title>oom-runner — User Manual</title>
+  <style>
+
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ background-color: #f8f8f8; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ef2929; } 
+code span.an { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.at { color: #204a87; } 
+code span.bn { color: #0000cf; } 
+code span.cf { color: #204a87; font-weight: bold; } 
+code span.ch { color: #4e9a06; } 
+code span.cn { color: #8f5902; } 
+code span.co { color: #8f5902; font-style: italic; } 
+code span.cv { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.do { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.dt { color: #204a87; } 
+code span.dv { color: #0000cf; } 
+code span.er { color: #a40000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #0000cf; } 
+code span.fu { color: #204a87; font-weight: bold; } 
+code span.im { } 
+code span.in { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.kw { color: #204a87; font-weight: bold; } 
+code span.op { color: #ce5c00; font-weight: bold; } 
+code span.ot { color: #8f5902; } 
+code span.pp { color: #8f5902; font-style: italic; } 
+code span.sc { color: #ce5c00; font-weight: bold; } 
+code span.ss { color: #4e9a06; } 
+code span.st { color: #4e9a06; } 
+code span.va { color: #000000; } 
+code span.vs { color: #4e9a06; } 
+code span.wa { color: #8f5902; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+@page {
+size: A4;
+margin: 22mm 18mm 22mm 18mm;
+@bottom-center {
+content: counter(page) " / " counter(pages);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+@top-right {
+content: string(doctitle);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+}
+html { font-size: 11pt; }
+body {
+font-family: "DejaVu Sans", "Liberation Sans", "Helvetica", sans-serif;
+line-height: 1.5;
+color: #1a1a1a;
+max-width: 920px;
+margin: 24px auto;
+padding: 0 18px 48px;
+background: #fff;
+hyphens: auto;
+}
+
+header.title-block {
+border-bottom: 2px solid #2b6cb0;
+padding-bottom: 12px;
+margin-bottom: 28px;
+}
+h1.title {
+font-size: 26pt;
+color: #1a365d;
+margin: 0 0 4px;
+string-set: doctitle content();
+}
+p.subtitle, p.author, p.date {
+margin: 2px 0;
+color: #555;
+font-size: 10.5pt;
+}
+
+h1, h2, h3, h4, h5, h6 {
+font-family: "DejaVu Sans", sans-serif;
+color: #1a365d;
+page-break-after: avoid;
+line-height: 1.25;
+}
+h1 { font-size: 20pt; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-top: 32px; }
+h2 { font-size: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-top: 26px; }
+h3 { font-size: 13pt; margin-top: 22px; color: #2c5282; }
+h4 { font-size: 11.5pt; margin-top: 18px; color: #2c5282; }
+
+p { margin: 0.6em 0; }
+ul, ol { margin: 0.6em 0 0.6em 22px; padding: 0; }
+li { margin: 4px 0; }
+
+code {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 0.92em;
+background: #f1f5f9;
+color: #1a202c;
+padding: 1px 5px;
+border-radius: 3px;
+border: 1px solid #e2e8f0;
+}
+
+pre {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 9.5pt;
+background: #1a202c;
+color: #f7fafc;
+padding: 12px 14px;
+border-radius: 6px;
+overflow-x: auto;
+page-break-inside: avoid;
+line-height: 1.45;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+pre code {
+background: transparent;
+color: inherit;
+border: none;
+padding: 0;
+font-size: inherit;
+}
+
+blockquote {
+margin: 0.8em 0;
+padding: 8px 14px;
+border-left: 4px solid #4299e1;
+background: #ebf8ff;
+color: #2a4365;
+border-radius: 0 4px 4px 0;
+}
+
+table {
+border-collapse: collapse;
+width: 100%;
+margin: 1em 0;
+font-size: 10pt;
+page-break-inside: avoid;
+}
+th, td {
+border: 1px solid #cbd5e0;
+padding: 6px 9px;
+text-align: left;
+vertical-align: top;
+}
+thead th {
+background: #2c5282;
+color: #fff;
+font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+
+a { color: #2b6cb0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+nav#TOC {
+background: #f7fafc;
+border: 1px solid #e2e8f0;
+border-radius: 6px;
+padding: 14px 22px 14px 14px;
+margin: 16px 0 28px;
+page-break-after: always;
+}
+nav#TOC > ul { list-style: none; margin-left: 6px; padding: 0; }
+nav#TOC ul ul { margin-left: 18px; }
+nav#TOC > h2 { margin-top: 0; border: none; font-size: 13pt; }
+nav#TOC li { margin: 3px 0; }
+
+hr {
+border: none;
+border-top: 1px solid #cbd5e0;
+margin: 24px 0;
+}
+
+blockquote.note { border-left-color: #38b2ac; background: #e6fffa; color: #234e52; }
+blockquote.warning { border-left-color: #ed8936; background: #fffaf0; color: #7b341e; }
+blockquote.danger { border-left-color: #e53e3e; background: #fff5f5; color: #742a2a; }
+blockquote.success { border-left-color: #38a169; background: #f0fff4; color: #22543d; }
+
+@media print {
+body { font-size: 10pt; max-width: none; margin: 0; padding: 0; }
+a { color: #1a365d; }
+pre { font-size: 8.8pt; }
+nav#TOC { page-break-after: always; }
+h1, h2 { page-break-before: auto; }
+h1 { page-break-before: always; }
+h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
+}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">oom-runner — User Manual</h1>
+<p class="subtitle">Memory-bounded systemd scopes for any workload</p>
+<p class="author">System post-mortem 2026-04-28</p>
+<p class="date">2026-04-28</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#quick-start" id="toc-quick-start">Quick Start</a></li>
+<li><a href="#how-it-works" id="toc-how-it-works">How it works</a></li>
+<li><a href="#subcommands" id="toc-subcommands">Subcommands</a></li>
+<li><a href="#run-options" id="toc-run-options">Run options</a>
+<ul>
+<li><a href="#default---inherit-env-regex" id="toc-default---inherit-env-regex">Default <code>--inherit-env</code>
+regex</a></li>
+</ul></li>
+<li><a href="#safety-guards" id="toc-safety-guards">Safety
+guards</a></li>
+<li><a href="#presets" id="toc-presets">Presets</a></li>
+<li><a href="#common-scenarios" id="toc-common-scenarios">Common
+scenarios</a>
+<ul>
+<li><a href="#wrapping-claude-code" id="toc-wrapping-claude-code">Wrapping Claude Code</a></li>
+<li><a href="#wrapping-individual-mcp-servers" id="toc-wrapping-individual-mcp-servers">Wrapping individual MCP
+servers</a></li>
+<li><a href="#android-builds" id="toc-android-builds">Android
+builds</a></li>
+<li><a href="#browsers" id="toc-browsers">Browsers</a></li>
+<li><a href="#shell-pipelines" id="toc-shell-pipelines">Shell
+pipelines</a></li>
+<li><a href="#detached-background-workers" id="toc-detached-background-workers">Detached background
+workers</a></li>
+<li><a href="#one-off-python-scripts" id="toc-one-off-python-scripts">One-off Python scripts</a></li>
+<li><a href="#containers" id="toc-containers">Containers</a></li>
+</ul></li>
+<li><a href="#verification" id="toc-verification">Verification</a></li>
+<li><a href="#troubleshooting" id="toc-troubleshooting">Troubleshooting</a>
+<ul>
+<li><a href="#user-systemd-manager-is-not-reachable" id="toc-user-systemd-manager-is-not-reachable">“User systemd manager is
+not reachable”</a></li>
+<li><a href="#foreground-command-exits-but-my-terminal-looks-weird" id="toc-foreground-command-exits-but-my-terminal-looks-weird">Foreground
+command exits but my terminal looks weird</a></li>
+<li><a href="#npm-exec-node-command-cant-find-packages" id="toc-npm-exec-node-command-cant-find-packages"><code>npm exec</code>
+/ Node command can’t find packages</a></li>
+<li><a href="#unknown-assignment-workingdirectory" id="toc-unknown-assignment-workingdirectory">“Unknown assignment:
+WorkingDirectory=…”</a></li>
+<li><a href="#shell-mode-interpreted-my-var-wrong" id="toc-shell-mode-interpreted-my-var-wrong"><code>--shell</code> mode
+interpreted my <code>$VAR</code> wrong</a></li>
+<li><a href="#process-gets-oom-killed-at-memoryhigh-not-memorymax" id="toc-process-gets-oom-killed-at-memoryhigh-not-memorymax">Process
+gets OOM-killed at MemoryHigh, not MemoryMax</a></li>
+<li><a href="#oom-runner-list-doesnt-show-my-unit" id="toc-oom-runner-list-doesnt-show-my-unit"><code>oom-runner list</code>
+doesn’t show my unit</a></li>
+<li><a href="#detached-service-immediately-exits" id="toc-detached-service-immediately-exits">Detached service immediately
+exits</a></li>
+<li><a href="#refusing-memorymax64m-128m-floor" id="toc-refusing-memorymax64m-128m-floor">“Refusing MemoryMax=64M (&lt;
+128M floor)”</a></li>
+<li><a href="#multiple-claude-instances-inherit-the-same-cgroup" id="toc-multiple-claude-instances-inherit-the-same-cgroup">Multiple
+Claude instances inherit the same cgroup</a></li>
+</ul></li>
+<li><a href="#faq" id="toc-faq">FAQ</a></li>
+<li><a href="#companion-tools" id="toc-companion-tools">Companion
+Tools</a></li>
+<li><a href="#appendix-a-full-output-of-presets" id="toc-appendix-a-full-output-of-presets">Appendix A — Full output of
+<code>presets</code></a></li>
+<li><a href="#appendix-b-exit-codes" id="toc-appendix-b-exit-codes">Appendix B — Exit codes</a></li>
+<li><a href="#appendix-c-cgroup-paths" id="toc-appendix-c-cgroup-paths">Appendix C — Cgroup paths</a></li>
+</ul>
+</nav>
+<section id="overview" class="level1">
+<h1>Overview</h1>
+<p><code>oom-runner.sh</code> wraps <strong>almost any command</strong>
+in its own bounded <strong>systemd transient scope</strong> (foreground)
+or <strong>service</strong> (background) so a single runaway can never
+starve the rest of your session. It is the companion to
+<code>oom-hardening.sh</code>:</p>
+<ul>
+<li><code>oom-hardening.sh</code> sets the <strong>umbrella</strong> —
+bounds for the whole user slice plus enables
+<code>systemd-oomd</code>.</li>
+<li><code>oom-runner.sh</code> sets the <strong>per-workload</strong>
+bound — Claude, MCP servers, Android builds, browsers, containers, IDEs,
+ad-hoc shell pipelines.</li>
+</ul>
+<p>Defaults are deliberately generous (<code>MemoryMax=12G</code> if you
+set nothing) so wrapping commands rarely breaks them. The actual win is:
+<strong>you can no longer exhaust the whole machine from inside one
+scope</strong>.</p>
+<p>The script needs <strong>no root</strong>. It uses your per-user
+systemd manager.</p>
+<hr />
+</section>
+<section id="quick-start" class="level1">
+<h1>Quick Start</h1>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Anything that takes -- and a command works</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--</span> claude</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--</span> yandex-browser</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--</span> python heavy.py</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Use a preset for sane workload-sized limits</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> claude  <span class="at">--</span> claude</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> mcp     <span class="at">-n</span> upstash <span class="at">--</span> npm exec @upstash/context7-mcp@latest</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> build   <span class="at">--</span> bash <span class="at">-c</span> <span class="st">&#39;cd ~/proj &amp;&amp; m -j8&#39;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> browser <span class="at">--</span> yandex-browser</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Run a shell pipeline (use --shell to keep pipes/redirects working)</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--shell</span> <span class="at">--</span> <span class="st">&#39;cat huge.log | grep ERROR | head -100&#39;</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Background a service</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">-d</span> <span class="at">--preset</span> mcp <span class="at">-n</span> my-mcp <span class="at">--</span> npm exec my-mcp@latest</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> list                 <span class="co"># see all active oom-runner units</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> status my-mcp        <span class="co"># show its limits + memory usage</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> logs   my-mcp <span class="at">-f</span>     <span class="co"># tail its journal</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> kill   my-mcp        <span class="co"># stop it</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> clean                <span class="co"># stop ALL oom-runner units</span></span></code></pre></div>
+<p>Add a shell alias for convenience:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ~/.bashrc or ~/.zshrc</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="bu">alias</span> oom=<span class="st">&#39;~/Downloads/oom-runner.sh&#39;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="bu">alias</span> claude=<span class="st">&#39;~/Downloads/oom-runner.sh --preset claude -- claude&#39;</span></span></code></pre></div>
+<hr />
+</section>
+<section id="how-it-works" class="level1">
+<h1>How it works</h1>
+<p>When you run:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> claude <span class="at">--</span> claude</span></code></pre></div>
+<p>the script invokes:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">exec</span> systemd-run <span class="at">--user</span> <span class="at">--collect</span> <span class="at">--scope</span> <span class="dt">\</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">--unit</span><span class="op">=</span>oomrun-claude-<span class="op">&lt;</span>rand<span class="op">&gt;</span>.scope <span class="dt">\</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">--pty</span> <span class="dt">\</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">--description</span><span class="op">=</span><span class="st">&#39;oom-runner: claude (memmax=10G, memhigh=8G, swap=2G, cpu=200%)&#39;</span> <span class="dt">\</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">-p</span> MemoryMax=10G <span class="dt">\</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">-p</span> MemoryHigh=8G <span class="dt">\</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">-p</span> MemorySwapMax=2G <span class="dt">\</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">-p</span> TasksMax=4096 <span class="dt">\</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">-p</span> CPUQuota=200% <span class="dt">\</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">-p</span> IOWeight=200 <span class="dt">\</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">-p</span> Environment=PATH=… <span class="at">-p</span> Environment=DISPLAY=… …  <span class="dt">\</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">--</span> claude</span></code></pre></div>
+<p><code>systemd-run</code> creates a <strong>transient cgroup</strong>
+at:</p>
+<pre><code>/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/oomrun-claude-&lt;rand&gt;.scope</code></pre>
+<p>The kernel enforces every resource limit on that cgroup. When the
+command exits, <code>--collect</code> removes the unit automatically.
+When the command exceeds <code>MemoryMax</code>, the kernel kills
+processes <strong>inside that cgroup only</strong> — your shell, IDE,
+other Claude instances, etc. all survive.</p>
+<hr />
+</section>
+<section id="subcommands" class="level1">
+<h1>Subcommands</h1>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Command</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>oom-runner [opts] -- &lt;cmd&gt; [args]</code></td>
+<td>Run <code>cmd</code> in a bounded foreground scope</td>
+</tr>
+<tr>
+<td><code>oom-runner run [opts] -- &lt;cmd&gt; [args]</code></td>
+<td>Same, explicit subcommand form</td>
+</tr>
+<tr>
+<td><code>oom-runner -d [opts] -- &lt;cmd&gt; [args]</code></td>
+<td>Run <code>cmd</code> as a bounded background service</td>
+</tr>
+<tr>
+<td><code>oom-runner list</code></td>
+<td>List active <code>oomrun-*</code> scopes/services</td>
+</tr>
+<tr>
+<td><code>oom-runner status &lt;unit&gt;</code></td>
+<td>Show one unit’s status (incl. live mem usage)</td>
+</tr>
+<tr>
+<td><code>oom-runner logs &lt;unit&gt; [...]</code></td>
+<td><code>journalctl --user -u &lt;unit&gt;</code> (extra args pass
+through, e.g. <code>-f</code>, <code>-n 100</code>)</td>
+</tr>
+<tr>
+<td><code>oom-runner kill &lt;unit&gt;</code></td>
+<td>Stop one unit (sends SIGTERM, then SIGKILL after timeout)</td>
+</tr>
+<tr>
+<td><code>oom-runner clean</code></td>
+<td>Stop <strong>all</strong> oomrun units</td>
+</tr>
+<tr>
+<td><code>oom-runner presets</code></td>
+<td>List available presets and their limits</td>
+</tr>
+<tr>
+<td><code>oom-runner --help</code></td>
+<td>Full usage</td>
+</tr>
+<tr>
+<td><code>oom-runner --version</code></td>
+<td>Print script version</td>
+</tr>
+</tbody>
+</table>
+<p><code>&lt;unit&gt;</code> may be the bare custom suffix
+(e.g. <code>upstash</code>), the prefixed name
+(e.g. <code>oomrun-upstash</code>), or the full unit name with
+<code>.scope</code>/<code>.service</code>.</p>
+<hr />
+</section>
+<section id="run-options" class="level1">
+<h1>Run options</h1>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-p, --preset NAME</code></td>
+<td><code>default</code></td>
+<td>Apply a named preset. See <strong>Presets</strong> below.</td>
+</tr>
+<tr>
+<td><code>-m, --memory-max SIZE</code></td>
+<td>preset or 12G</td>
+<td>Hard memory ceiling. Refused below 128 MiB without
+<code>--yes</code>.</td>
+</tr>
+<tr>
+<td><code>-h, --memory-high SIZE</code></td>
+<td>preset</td>
+<td>Soft throttle. Auto-clamped to <code>≤ MemoryMax</code>.</td>
+</tr>
+<tr>
+<td><code>-s, --memory-swap-max SIZE</code></td>
+<td>preset</td>
+<td>Swap cap.</td>
+</tr>
+<tr>
+<td><code>-t, --tasks-max N</code></td>
+<td>preset or <code>infinity</code></td>
+<td>Max tasks (PIDs) in the cgroup.</td>
+</tr>
+<tr>
+<td><code>-c, --cpu-quota PCT</code></td>
+<td>unset</td>
+<td>CPU quota; <code>200</code> = 2 cores.</td>
+</tr>
+<tr>
+<td><code>--io-weight N</code></td>
+<td>preset</td>
+<td>I/O priority weight 1–10000.</td>
+</tr>
+<tr>
+<td><code>-n, --name NAME</code></td>
+<td>random</td>
+<td>Custom unit suffix. Becomes <code>oomrun-NAME</code>.</td>
+</tr>
+<tr>
+<td><code>-d, --detach</code></td>
+<td>off</td>
+<td>Run as background <code>--service</code> instead of foreground
+<code>--scope</code>.</td>
+</tr>
+<tr>
+<td><code>--shell</code></td>
+<td>off</td>
+<td>Combine remaining args into a single <code>bash -c</code> line. Lets
+you use pipes, redirects, here-strings, env expansions.</td>
+</tr>
+<tr>
+<td><code>--pty</code> / <code>--no-pty</code></td>
+<td>auto</td>
+<td>Force/disable PTY allocation (foreground only). Default: PTY when
+stdout is a terminal.</td>
+</tr>
+<tr>
+<td><code>--setenv K=V</code></td>
+<td>(none)</td>
+<td>Pass env var into the unit. Repeatable.</td>
+</tr>
+<tr>
+<td><code>--inherit-env REGEX</code></td>
+<td>see below</td>
+<td>Inherit env vars matching the regex from caller.</td>
+</tr>
+<tr>
+<td><code>--no-inherit-env</code></td>
+<td>off</td>
+<td>Start with a clean env (no inherited vars).</td>
+</tr>
+<tr>
+<td><code>--workdir PATH</code></td>
+<td><code>$PWD</code></td>
+<td>Working directory inside the unit.</td>
+</tr>
+<tr>
+<td><code>--nice N</code></td>
+<td>0</td>
+<td>Nice level (-20 .. 19).</td>
+</tr>
+<tr>
+<td><code>--read-only</code> / <code>--rw</code></td>
+<td>rw</td>
+<td>Mount root read-only/read-write inside unit.</td>
+</tr>
+<tr>
+<td><code>--no-protect</code></td>
+<td>off</td>
+<td>Disable extra hardening directives (only relevant for
+<code>-d</code>).</td>
+</tr>
+<tr>
+<td><code>-v, --verbose</code></td>
+<td>off</td>
+<td>Print the systemd-run command before exec.</td>
+</tr>
+<tr>
+<td><code>-y, --yes</code></td>
+<td>off</td>
+<td>Skip below-floor confirmation.</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>off</td>
+<td>Print what would run; do not execute.</td>
+</tr>
+</tbody>
+</table>
+<section id="default---inherit-env-regex" class="level2">
+<h2>Default <code>--inherit-env</code> regex</h2>
+<p>Matches the env vars that 99% of GUI / CLI / dev workloads actually
+need:</p>
+<pre><code>^(PATH|HOME|LANG|LC_.*|TERM|DISPLAY|WAYLAND_DISPLAY|XDG_.*|DBUS_.*|SSH_AUTH_SOCK|EDITOR|GIT_.*)$</code></pre>
+<p>Override with <code>--inherit-env &#39;&lt;your-regex&gt;&#39;</code> or
+disable entirely with <code>--no-inherit-env</code>. Inherited variables
+are passed via <code>-p Environment=…</code>, not by attaching to the
+host environment, which is what makes the unit hermetic.</p>
+<hr />
+</section>
+</section>
+<section id="safety-guards" class="level1">
+<h1>Safety guards</h1>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Guard</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>128 MiB floor</strong></td>
+<td>Refuses <code>MemoryMax</code> below 128 MiB unless
+<code>--yes</code>. Prevents accidentally crippling a process to the
+point of instant death.</td>
+</tr>
+<tr>
+<td><strong>Auto-clamp <code>MemoryHigh</code></strong></td>
+<td>If you set <code>MemoryHigh &gt; MemoryMax</code>, the script clamps
+<code>MemoryHigh = MemoryMax</code> and warns. This is silently allowed
+by systemd, but indicates a config bug.</td>
+</tr>
+<tr>
+<td><strong>Command existence check</strong></td>
+<td>If the command isn’t in <code>$PATH</code> and isn’t an executable
+file, prints a warning before launch (still tries — systemd will report
+the real error).</td>
+</tr>
+<tr>
+<td><strong>Pre-flight: user manager reachable</strong></td>
+<td>Verifies <code>XDG_RUNTIME_DIR</code> and that
+<code>systemctl --user</code> works. Falls back to
+<code>/run/user/$(id -u)</code>.</td>
+</tr>
+<tr>
+<td><strong>Pre-flight: slice accounting</strong></td>
+<td>Warns if <code>MemoryAccounting=no</code> on
+<code>user-X.slice</code> (limits still work in the scope, but the
+umbrella isn’t accounted).</td>
+</tr>
+<tr>
+<td><strong>systemd version check</strong></td>
+<td>Warns if systemd &lt; 240.</td>
+</tr>
+<tr>
+<td><strong>Hardening on <code>-d</code> services</strong></td>
+<td>Sets <code>NoNewPrivileges=yes</code>, <code>PrivateTmp=yes</code>,
+<code>ProtectSystem=full</code> on detached services. Disable with
+<code>--no-protect</code>.</td>
+</tr>
+<tr>
+<td><strong>Auto cleanup</strong></td>
+<td><code>--collect</code> ensures units are removed from systemd state
+after exit (no zombie unit clutter).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+</section>
+<section id="presets" class="level1">
+<h1>Presets</h1>
+<p>Run <code>oom-runner presets</code> to print the live table. Defaults
+as of v1.1:</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+</colgroup>
+<thead>
+<tr>
+<th>Preset</th>
+<th>MemoryMax</th>
+<th>MemoryHigh</th>
+<th>SwapMax</th>
+<th>TasksMax</th>
+<th>CPUQuota</th>
+<th>IOWeight</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>default</code></td>
+<td>12G</td>
+<td>10G</td>
+<td>2G</td>
+<td>∞</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>safe</code></td>
+<td>8G</td>
+<td>6G</td>
+<td>1G</td>
+<td>4096</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>tiny</code></td>
+<td>512M</td>
+<td>384M</td>
+<td>128M</td>
+<td>256</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>small</code></td>
+<td>1G</td>
+<td>768M</td>
+<td>256M</td>
+<td>512</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>medium</code></td>
+<td>4G</td>
+<td>3G</td>
+<td>512M</td>
+<td>2048</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>large</code></td>
+<td>16G</td>
+<td>12G</td>
+<td>2G</td>
+<td>∞</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>huge</code></td>
+<td>32G</td>
+<td>24G</td>
+<td>4G</td>
+<td>∞</td>
+<td>–</td>
+<td>–</td>
+</tr>
+<tr>
+<td><code>claude</code></td>
+<td>10G</td>
+<td>8G</td>
+<td>2G</td>
+<td>4096</td>
+<td>–</td>
+<td>200</td>
+</tr>
+<tr>
+<td><code>mcp</code></td>
+<td>2G</td>
+<td>1500M</td>
+<td>512M</td>
+<td>1024</td>
+<td>–</td>
+<td>100</td>
+</tr>
+<tr>
+<td><code>build</code></td>
+<td>32G</td>
+<td>24G</td>
+<td>6G</td>
+<td>∞</td>
+<td>–</td>
+<td>400</td>
+</tr>
+<tr>
+<td><code>browser</code></td>
+<td>8G</td>
+<td>6G</td>
+<td>1G</td>
+<td>4096</td>
+<td>–</td>
+<td>150</td>
+</tr>
+<tr>
+<td><code>container</code></td>
+<td>4G</td>
+<td>3G</td>
+<td>512M</td>
+<td>2048</td>
+<td>–</td>
+<td>100</td>
+</tr>
+<tr>
+<td><code>editor</code></td>
+<td>6G</td>
+<td>5G</td>
+<td>1G</td>
+<td>2048</td>
+<td>–</td>
+<td>200</td>
+</tr>
+<tr>
+<td><code>vm</code></td>
+<td>16G</td>
+<td>12G</td>
+<td>2G</td>
+<td>∞</td>
+<td>–</td>
+<td>100</td>
+</tr>
+<tr>
+<td><code>shell</code></td>
+<td>4G</td>
+<td>3G</td>
+<td>512M</td>
+<td>2048</td>
+<td>–</td>
+<td>–</td>
+</tr>
+</tbody>
+</table>
+<p>Explicit
+<code>-m</code>/<code>-h</code>/<code>-s</code>/<code>-c</code>/<code>--io-weight</code>
+flags <strong>override</strong> preset values. Combine freely:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># claude preset, but raise to 16G, narrow CPU to 1 core</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> claude <span class="at">-m</span> 16G <span class="at">-h</span> 14G <span class="at">-c</span> 100 <span class="at">--</span> claude</span></code></pre></div>
+<hr />
+</section>
+<section id="common-scenarios" class="level1">
+<h1>Common scenarios</h1>
+<section id="wrapping-claude-code" class="level2">
+<h2>Wrapping Claude Code</h2>
+<p>Make every Claude session a 10G island:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># In ~/.bashrc</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="bu">alias</span> claude=<span class="st">&#39;~/Downloads/oom-runner.sh --preset claude -- claude&#39;</span></span></code></pre></div>
+<p>Each new Claude process gets its own scope. MCP servers spawned
+<strong>by</strong> Claude inherit the cgroup automatically — they all
+share the 10G ceiling.</p>
+</section>
+<section id="wrapping-individual-mcp-servers" class="level2">
+<h2>Wrapping individual MCP servers</h2>
+<p>When MCP servers are launched separately (e.g. via a wrapper
+script):</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> mcp <span class="at">-n</span> upstash      <span class="at">--</span> npm exec @upstash/context7-mcp@latest</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> mcp <span class="at">-n</span> playwright   <span class="at">--</span> npm exec @playwright/test@latest</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> mcp <span class="at">-n</span> helius       <span class="at">--</span> npm exec helius@latest</span></code></pre></div>
+<p>Now any one MCP eating 4G doesn’t starve the others.</p>
+</section>
+<section id="android-builds" class="level2">
+<h2>Android builds</h2>
+<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> build <span class="at">--</span> bash <span class="at">-c</span> <span class="st">&#39;</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="st">    cd ~/proj/Android_15</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="st">    source build/envsetup.sh</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="st">    lunch aosp_arm64-userdebug</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="st">    m -j8</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="st">&#39;</span></span></code></pre></div>
+<p><code>build</code> preset = 32G hard / 24G soft / 6G swap / 400% CPU
+(4 cores). If the build’s working set explodes, only the build dies; you
+don’t lose your IDE, browser, terminals, or running services.</p>
+</section>
+<section id="browsers" class="level2">
+<h2>Browsers</h2>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> browser <span class="at">--</span> yandex-browser</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> browser <span class="at">-m</span> 4G <span class="at">--</span> chromium <span class="at">--user-data-dir</span><span class="op">=</span>/tmp/chr</span></code></pre></div>
+<p>A 4G ceiling per browser instance is generally enough; below that
+you’ll see tab eviction, which is preferable to OOM-killing the rest of
+your system.</p>
+</section>
+<section id="shell-pipelines" class="level2">
+<h2>Shell pipelines</h2>
+<p>The <code>--shell</code> flag combines remaining args into one
+<code>bash -c</code> invocation:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--shell</span> <span class="at">--</span> <span class="st">&#39;</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="st">    set -e</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="st">    cat large.json |</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="st">        jq &quot;.records[] | select(.size &gt; 1e6)&quot; |</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="st">        head -1000 &gt; /tmp/big.json</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a><span class="st">&#39;</span></span></code></pre></div>
+</section>
+<section id="detached-background-workers" class="level2">
+<h2>Detached background workers</h2>
+<div class="sourceCode" id="cb13"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">-d</span> <span class="at">--preset</span> mcp <span class="at">-n</span> redis-mcp <span class="at">--</span> npm exec @upstash/redis-mcp@latest</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> logs redis-mcp <span class="at">-f</span>       <span class="co"># tail</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> status redis-mcp        <span class="co"># check memory usage</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> kill redis-mcp          <span class="co"># stop</span></span></code></pre></div>
+<p>A detached service is fully managed: systemd restarts it on reboot
+only if you create a permanent unit (this script’s units are transient —
+they disappear on logout). For permanent units, use a custom user
+unit.</p>
+</section>
+<section id="one-off-python-scripts" class="level2">
+<h2>One-off Python scripts</h2>
+<div class="sourceCode" id="cb14"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">-m</span> 4G <span class="at">--</span> python my_script.py</span></code></pre></div>
+<p>Or with custom env:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">-m</span> 8G <span class="dt">\</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>    <span class="at">--setenv</span> PYTHONUNBUFFERED=1 <span class="dt">\</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">--setenv</span> MY_API_KEY=<span class="st">&quot;</span><span class="va">$MY_API_KEY</span><span class="st">&quot;</span> <span class="dt">\</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">--</span> python my_script.py</span></code></pre></div>
+</section>
+<section id="containers" class="level2">
+<h2>Containers</h2>
+<p>The script wraps the <strong>launcher</strong>
+(e.g. <code>podman run</code>), not the container’s runtime. Most
+container engines obey their own resource flags — combine:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> container <span class="at">--</span> <span class="dt">\</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    podman run <span class="at">--rm</span> <span class="at">-m</span> 1g <span class="at">--cpus</span><span class="op">=</span>1 my-image</span></code></pre></div>
+<p>The cgroup limits enforce a hard maximum even if
+<code>podman -m</code> is bypassed.</p>
+<hr />
+</section>
+</section>
+<section id="verification" class="level1">
+<h1>Verification</h1>
+<div class="sourceCode" id="cb17"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Run a small task and inspect the live cgroup</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">-m</span> 256M <span class="at">--</span> sleep 30 <span class="kw">&amp;</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> list</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a><span class="co"># In another terminal:</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> status <span class="op">&lt;</span>unit-from-list<span class="op">&gt;</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Look for:</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a><span class="co">#   Memory: 224K (high: 256M, max: 256M, swap max: …, available: …, peak: …)</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a><span class="co">#                              ^ this is the kernel-enforced ceiling</span></span></code></pre></div>
+<p>Or read the cgroup file directly:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span> /sys/fs/cgroup/user.slice/user-<span class="va">$(</span><span class="fu">id</span> <span class="at">-u</span><span class="va">)</span>.slice/user@<span class="va">$(</span><span class="fu">id</span> <span class="at">-u</span><span class="va">)</span>.service/app.slice/<span class="op">&lt;</span>unit<span class="op">&gt;</span>.scope/memory.max</span></code></pre></div>
+<p>A pure stress test:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">-m</span> 256M <span class="at">--</span> bash <span class="at">-c</span> <span class="st">&#39;</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="st">    python3 -c &quot;x=bytearray(); _=[x.extend(b\&quot;a\&quot;*1024*1024) for _ in range(2000)]&quot;</span></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="st">&#39;</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Process is killed inside the scope, not your shell.</span></span></code></pre></div>
+<hr />
+</section>
+<section id="troubleshooting" class="level1">
+<h1>Troubleshooting</h1>
+<section id="user-systemd-manager-is-not-reachable" class="level2">
+<h2>“User systemd manager is not reachable”</h2>
+<p>You’re in an SSH session without lingering. Either enable lingering
+once, then re-login:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> loginctl enable-linger <span class="va">$(</span><span class="fu">id</span> <span class="at">-un</span><span class="va">)</span></span></code></pre></div>
+<p>…or run the script from inside a graphical login session.</p>
+</section>
+<section id="foreground-command-exits-but-my-terminal-looks-weird" class="level2">
+<h2>Foreground command exits but my terminal looks weird</h2>
+<p><code>--pty</code> allocates a TTY for the scope. If the command does
+its own terminal manipulation (full-screen TUIs), you might end up with
+leftover terminal state. Reset with <code>reset</code> or
+<code>stty sane</code>. Or run with <code>--no-pty</code> if your
+command doesn’t need a TTY.</p>
+</section>
+<section id="npm-exec-node-command-cant-find-packages" class="level2">
+<h2><code>npm exec</code> / Node command can’t find packages</h2>
+<p>Node looks for <code>node_modules</code> relative to
+<code>$PWD</code>. Foreground scopes inherit <code>$PWD</code> from the
+shell, so this works. Detached services do <strong>not</strong> inherit
+<code>$PWD</code> from the shell — you must pass
+<code>--workdir</code>:</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">-d</span> <span class="at">--workdir</span> ~/myproj <span class="at">--</span> npm exec something</span></code></pre></div>
+</section>
+<section id="unknown-assignment-workingdirectory" class="level2">
+<h2>“Unknown assignment: WorkingDirectory=…”</h2>
+<p>You’re on a very old systemd that doesn’t support
+<code>WorkingDirectory</code> on transient units. Upgrade systemd, or
+accept that detached units run with <code>/</code> as cwd.</p>
+</section>
+<section id="shell-mode-interpreted-my-var-wrong" class="level2">
+<h2><code>--shell</code> mode interpreted my <code>$VAR</code>
+wrong</h2>
+<p>The shell in <code>--shell</code> mode is
+<code>/bin/bash -c &quot;$line&quot;</code> — <code>$line</code> is expanded
+<strong>inside</strong> that bash, not in your calling shell. To pass a
+value from the caller, use <code>--setenv</code>:</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="va">MY_VAR</span><span class="op">=</span>hello <span class="ex">oom-runner</span> <span class="at">--shell</span> <span class="at">--setenv</span> <span class="st">&quot;MY_VAR=</span><span class="va">$MY_VAR</span><span class="st">&quot;</span> <span class="at">--</span> <span class="st">&#39;echo $MY_VAR&#39;</span></span></code></pre></div>
+</section>
+<section id="process-gets-oom-killed-at-memoryhigh-not-memorymax" class="level2">
+<h2>Process gets OOM-killed at MemoryHigh, not MemoryMax</h2>
+<p>That’s normal. <code>MemoryHigh</code> is a soft throttle — when
+crossed, the kernel becomes very aggressive about reclaiming memory and
+the process can be slowed to the point of being non-responsive. If you
+want the process to get more headroom before reclaim, raise
+<code>MemoryHigh</code>. If you want it to be killed sooner, lower
+<code>MemoryMax</code>.</p>
+</section>
+<section id="oom-runner-list-doesnt-show-my-unit" class="level2">
+<h2><code>oom-runner list</code> doesn’t show my unit</h2>
+<p>Either the unit already exited (and <code>--collect</code> cleaned it
+up), or it crashed before becoming “active”. Check journal:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">--user</span> <span class="at">-t</span> systemd <span class="kw">|</span> <span class="fu">grep</span> oomrun-</span></code></pre></div>
+</section>
+<section id="detached-service-immediately-exits" class="level2">
+<h2>Detached service immediately exits</h2>
+<p>Foreground commands that read stdin won’t work as <code>-d</code>
+services unless their stdin is redirected. Provide one explicitly or use
+<code>--shell</code>:</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">-d</span> <span class="at">--shell</span> <span class="at">--</span> <span class="st">&#39;exec my-command &lt; /dev/null &gt; /tmp/out 2&gt;&amp;1&#39;</span></span></code></pre></div>
+</section>
+<section id="refusing-memorymax64m-128m-floor" class="level2">
+<h2>“Refusing MemoryMax=64M (&lt; 128M floor)”</h2>
+<p>Add <code>--yes</code>:</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">-m</span> 64M <span class="at">--yes</span> <span class="at">--</span> echo <span class="st">&quot;really small&quot;</span></span></code></pre></div>
+<p>The floor exists because tiny limits cripple modern processes (a
+single Node.js startup easily allocates 80 MiB). Override
+consciously.</p>
+</section>
+<section id="multiple-claude-instances-inherit-the-same-cgroup" class="level2">
+<h2>Multiple Claude instances inherit the same cgroup</h2>
+<p>When Claude is launched from inside another Claude process (e.g. via
+a shell-out), the child inherits the parent’s cgroup — the 10G ceiling
+applies to <strong>both combined</strong>. To bound them separately,
+launch each from a fresh shell:</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> claude <span class="at">-n</span> claude-A <span class="at">--</span> claude</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="co"># in another terminal</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">--preset</span> claude <span class="at">-n</span> claude-B <span class="at">--</span> claude</span></code></pre></div>
+<hr />
+</section>
+</section>
+<section id="faq" class="level1">
+<h1>FAQ</h1>
+<p><strong>Q. Does this work for GUI apps?</strong> Yes. The default
+<code>--inherit-env</code> includes <code>DISPLAY</code>,
+<code>WAYLAND_DISPLAY</code>, <code>XDG_*</code>, <code>DBUS_*</code>,
+etc. GUI apps launch normally inside the scope.</p>
+<p><strong>Q. Will systemd kill my command if I just close the
+terminal?</strong> Foreground scopes are tied to your shell (the
+caller). Closing the terminal sends SIGHUP to the scope’s processes.
+Detached services (<code>-d</code>) run independently of the calling
+terminal — they survive logout only if <code>Linger=yes</code> (see
+<code>loginctl enable-linger</code>).</p>
+<p><strong>Q. Can I limit GPU memory too?</strong> No — cgroup v2
+doesn’t expose GPU memory. For Nvidia, use
+<code>CUDA_VISIBLE_DEVICES</code>. For AMD, use the GPU’s own controls.
+For Intel, the iGPU shares system RAM and is bounded by your
+<code>MemoryMax</code>.</p>
+<p><strong>Q. How is this different from <code>ulimit</code>?</strong>
+<code>ulimit</code> is per-process and easy to bypass (a child fork can
+re-raise). Cgroups are per-cgroup and <strong>enforced by the
+kernel</strong> regardless of how many processes you fork inside.</p>
+<p><strong>Q. How is this different from running <code>nice</code> /
+<code>ionice</code>?</strong> Those tune scheduling priority. They don’t
+bound memory. They’re useful <strong>inside</strong> the scope (via
+<code>--nice</code>) but don’t replace <code>MemoryMax</code>.</p>
+<p><strong>Q. Can I nest oom-runners?</strong> Yes. Cgroup v2 enforces
+“no resource on a child can exceed the parent’s” automatically. So:</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="ex">oom-runner</span> <span class="at">-m</span> 16G <span class="at">--</span> bash <span class="at">-c</span> <span class="st">&#39;</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="st">    oom-runner -m 4G -- python a.py &amp;</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="st">    oom-runner -m 4G -- python b.py &amp;</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="st">    wait</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="st">&#39;</span></span></code></pre></div>
+<p>…works, with the inner scopes capped at 4G each within the 16G
+outer.</p>
+<p><strong>Q. Does the script create permanent units?</strong> No —
+every unit is <strong>transient</strong>: it lives only until the
+command exits, then <code>--collect</code> removes it. For permanent
+user services use
+<code>systemctl --user edit --user --force --full &lt;name&gt;.service</code>
+directly.</p>
+<p><strong>Q. Can I run as root for system-wide bounds?</strong> This
+script targets <code>--user</code>. For system-wide use, swap
+<code>--user</code> for <code>--system</code> in
+<code>systemd-run</code> and edit accordingly. The user-scope use case
+is by far the most common and is the post-mortem fix recommended by
+<code>Crash_Report.md</code>.</p>
+<hr />
+</section>
+<section id="companion-tools" class="level1">
+<h1>Companion Tools</h1>
+<ul>
+<li><strong><code>oom-hardening.sh</code></strong> — sets the umbrella
+limits and enables <code>systemd-oomd</code>. <strong>Apply this
+first</strong>, then start using <code>oom-runner</code>.</li>
+<li><strong><code>Crash_Report.md</code></strong> — the 2026-04-28
+incident this whole toolkit was built to prevent.</li>
+</ul>
+<hr />
+</section>
+<section id="appendix-a-full-output-of-presets" class="level1">
+<h1>Appendix A — Full output of <code>presets</code></h1>
+<pre><code>PRESET       Mem.Max    Mem.High   Swap.Max     TasksMax   CPUQuota   IOWeight
+---------------------------------------------------------------------------
+default      12G        10G        2G           infinity              -
+safe         8G         6G         1G           4096                  -
+tiny         512M       384M       128M         256                   -
+small        1G         768M       256M         512                   -
+medium       4G         3G         512M         2048                  -
+large        16G        12G        2G           infinity              -
+huge         32G        24G        4G           infinity              -
+claude       10G        8G         2G           4096                  200
+mcp          2G         1500M      512M         1024                  100
+build        32G        24G        6G           infinity              400
+browser      8G         6G         1G           4096                  150
+container    4G         3G         512M         2048                  100
+editor       6G         5G         1G           2048                  200
+vm           16G        12G        2G           infinity              100
+shell        4G         3G         512M         2048                  -</code></pre>
+<hr />
+</section>
+<section id="appendix-b-exit-codes" class="level1">
+<h1>Appendix B — Exit codes</h1>
+<p>The foreground form (default) <code>exec</code>s
+<code>systemd-run</code>, so the exit code of
+<code>oom-runner -- cmd ...</code> is the exit code of <code>cmd</code>.
+Pre-flight failures exit 1 before launching.</p>
+<p>The detached form returns 0 once <code>systemd-run</code> has
+accepted the unit. Use <code>oom-runner status &lt;unit&gt;</code> and
+<code>oom-runner logs &lt;unit&gt;</code> to inspect.</p>
+<hr />
+</section>
+<section id="appendix-c-cgroup-paths" class="level1">
+<h1>Appendix C — Cgroup paths</h1>
+<p>Foreground scope:</p>
+<pre><code>/sys/fs/cgroup/user.slice/user-&lt;UID&gt;.slice/user@&lt;UID&gt;.service/app.slice/oomrun-&lt;name&gt;-&lt;rand&gt;.scope</code></pre>
+<p>Detached service:</p>
+<pre><code>/sys/fs/cgroup/user.slice/user-&lt;UID&gt;.slice/user@&lt;UID&gt;.service/app.slice/oomrun-&lt;name&gt;.service</code></pre>
+<p>Inspect:</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /sys/fs/cgroup/user.slice/user-<span class="va">$(</span><span class="fu">id</span> <span class="at">-u</span><span class="va">)</span>.slice/user@<span class="va">$(</span><span class="fu">id</span> <span class="at">-u</span><span class="va">)</span>.service/app.slice/oomrun-claude-<span class="pp">*</span>.scope/</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span> memory.current memory.max memory.high memory.swap.max</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span> cgroup.procs</span></code></pre></div>
+</section>
+</body>
+</html>

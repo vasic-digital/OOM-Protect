@@ -1,0 +1,171 @@
+/* oom-toolkit shared stylesheet — used for HTML rendering and weasyprint PDF.
+   Designed to look good both on screen and on print (A4). */
+
+@page {
+    size: A4;
+    margin: 22mm 18mm 22mm 18mm;
+    @bottom-center {
+        content: counter(page) " / " counter(pages);
+        font-family: "DejaVu Sans", sans-serif;
+        font-size: 9pt;
+        color: #888;
+    }
+    @top-right {
+        content: string(doctitle);
+        font-family: "DejaVu Sans", sans-serif;
+        font-size: 9pt;
+        color: #888;
+    }
+}
+
+html { font-size: 11pt; }
+body {
+    font-family: "DejaVu Sans", "Liberation Sans", "Helvetica", sans-serif;
+    line-height: 1.5;
+    color: #1a1a1a;
+    max-width: 920px;
+    margin: 24px auto;
+    padding: 0 18px 48px;
+    background: #fff;
+    hyphens: auto;
+}
+
+/* Title block from pandoc YAML */
+header.title-block {
+    border-bottom: 2px solid #2b6cb0;
+    padding-bottom: 12px;
+    margin-bottom: 28px;
+}
+h1.title {
+    font-size: 26pt;
+    color: #1a365d;
+    margin: 0 0 4px;
+    string-set: doctitle content();
+}
+p.subtitle, p.author, p.date {
+    margin: 2px 0;
+    color: #555;
+    font-size: 10.5pt;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    font-family: "DejaVu Sans", sans-serif;
+    color: #1a365d;
+    page-break-after: avoid;
+    line-height: 1.25;
+}
+h1 { font-size: 20pt; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-top: 32px; }
+h2 { font-size: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-top: 26px; }
+h3 { font-size: 13pt; margin-top: 22px; color: #2c5282; }
+h4 { font-size: 11.5pt; margin-top: 18px; color: #2c5282; }
+
+/* Paragraphs and lists */
+p  { margin: 0.6em 0; }
+ul, ol { margin: 0.6em 0 0.6em 22px; padding: 0; }
+li { margin: 4px 0; }
+
+/* Inline code */
+code {
+    font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+    font-size: 0.92em;
+    background: #f1f5f9;
+    color: #1a202c;
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Code blocks */
+pre {
+    font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+    font-size: 9.5pt;
+    background: #1a202c;
+    color: #f7fafc;
+    padding: 12px 14px;
+    border-radius: 6px;
+    overflow-x: auto;
+    page-break-inside: avoid;
+    line-height: 1.45;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+pre code {
+    background: transparent;
+    color: inherit;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+}
+
+/* Blockquotes */
+blockquote {
+    margin: 0.8em 0;
+    padding: 8px 14px;
+    border-left: 4px solid #4299e1;
+    background: #ebf8ff;
+    color: #2a4365;
+    border-radius: 0 4px 4px 0;
+}
+
+/* Tables */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    font-size: 10pt;
+    page-break-inside: avoid;
+}
+th, td {
+    border: 1px solid #cbd5e0;
+    padding: 6px 9px;
+    text-align: left;
+    vertical-align: top;
+}
+thead th {
+    background: #2c5282;
+    color: #fff;
+    font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+
+/* Links */
+a       { color: #2b6cb0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* TOC */
+nav#TOC {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 14px 22px 14px 14px;
+    margin: 16px 0 28px;
+    page-break-after: always;
+}
+nav#TOC > ul { list-style: none; margin-left: 6px; padding: 0; }
+nav#TOC ul ul { margin-left: 18px; }
+nav#TOC > h2 { margin-top: 0; border: none; font-size: 13pt; }
+nav#TOC li { margin: 3px 0; }
+
+/* Horizontal rule */
+hr {
+    border: none;
+    border-top: 1px solid #cbd5e0;
+    margin: 24px 0;
+}
+
+/* Admonition-ish boxes via blockquote conventions */
+blockquote.note     { border-left-color: #38b2ac; background: #e6fffa; color: #234e52; }
+blockquote.warning  { border-left-color: #ed8936; background: #fffaf0; color: #7b341e; }
+blockquote.danger   { border-left-color: #e53e3e; background: #fff5f5; color: #742a2a; }
+blockquote.success  { border-left-color: #38a169; background: #f0fff4; color: #22543d; }
+
+/* Print tweaks */
+@media print {
+    body { font-size: 10pt; max-width: none; margin: 0; padding: 0; }
+    a { color: #1a365d; }
+    pre { font-size: 8.8pt; }
+    nav#TOC { page-break-after: always; }
+    h1, h2 { page-break-before: auto; }
+    h1 { page-break-before: always; }
+    h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
+}

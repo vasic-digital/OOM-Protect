@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="System post-mortem 2026-04-28" />
+  <meta name="dcterms.date" content="2026-04-28" />
+  <title>oom-toolkit</title>
+  <style>
+
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ background-color: #f8f8f8; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ef2929; } 
+code span.an { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.at { color: #204a87; } 
+code span.bn { color: #0000cf; } 
+code span.cf { color: #204a87; font-weight: bold; } 
+code span.ch { color: #4e9a06; } 
+code span.cn { color: #8f5902; } 
+code span.co { color: #8f5902; font-style: italic; } 
+code span.cv { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.do { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.dt { color: #204a87; } 
+code span.dv { color: #0000cf; } 
+code span.er { color: #a40000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #0000cf; } 
+code span.fu { color: #204a87; font-weight: bold; } 
+code span.im { } 
+code span.in { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.kw { color: #204a87; font-weight: bold; } 
+code span.op { color: #ce5c00; font-weight: bold; } 
+code span.ot { color: #8f5902; } 
+code span.pp { color: #8f5902; font-style: italic; } 
+code span.sc { color: #ce5c00; font-weight: bold; } 
+code span.ss { color: #4e9a06; } 
+code span.st { color: #4e9a06; } 
+code span.va { color: #000000; } 
+code span.vs { color: #4e9a06; } 
+code span.wa { color: #8f5902; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+@page {
+size: A4;
+margin: 22mm 18mm 22mm 18mm;
+@bottom-center {
+content: counter(page) " / " counter(pages);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+@top-right {
+content: string(doctitle);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+}
+html { font-size: 11pt; }
+body {
+font-family: "DejaVu Sans", "Liberation Sans", "Helvetica", sans-serif;
+line-height: 1.5;
+color: #1a1a1a;
+max-width: 920px;
+margin: 24px auto;
+padding: 0 18px 48px;
+background: #fff;
+hyphens: auto;
+}
+
+header.title-block {
+border-bottom: 2px solid #2b6cb0;
+padding-bottom: 12px;
+margin-bottom: 28px;
+}
+h1.title {
+font-size: 26pt;
+color: #1a365d;
+margin: 0 0 4px;
+string-set: doctitle content();
+}
+p.subtitle, p.author, p.date {
+margin: 2px 0;
+color: #555;
+font-size: 10.5pt;
+}
+
+h1, h2, h3, h4, h5, h6 {
+font-family: "DejaVu Sans", sans-serif;
+color: #1a365d;
+page-break-after: avoid;
+line-height: 1.25;
+}
+h1 { font-size: 20pt; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-top: 32px; }
+h2 { font-size: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-top: 26px; }
+h3 { font-size: 13pt; margin-top: 22px; color: #2c5282; }
+h4 { font-size: 11.5pt; margin-top: 18px; color: #2c5282; }
+
+p { margin: 0.6em 0; }
+ul, ol { margin: 0.6em 0 0.6em 22px; padding: 0; }
+li { margin: 4px 0; }
+
+code {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 0.92em;
+background: #f1f5f9;
+color: #1a202c;
+padding: 1px 5px;
+border-radius: 3px;
+border: 1px solid #e2e8f0;
+}
+
+pre {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 9.5pt;
+background: #1a202c;
+color: #f7fafc;
+padding: 12px 14px;
+border-radius: 6px;
+overflow-x: auto;
+page-break-inside: avoid;
+line-height: 1.45;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+pre code {
+background: transparent;
+color: inherit;
+border: none;
+padding: 0;
+font-size: inherit;
+}
+
+blockquote {
+margin: 0.8em 0;
+padding: 8px 14px;
+border-left: 4px solid #4299e1;
+background: #ebf8ff;
+color: #2a4365;
+border-radius: 0 4px 4px 0;
+}
+
+table {
+border-collapse: collapse;
+width: 100%;
+margin: 1em 0;
+font-size: 10pt;
+page-break-inside: avoid;
+}
+th, td {
+border: 1px solid #cbd5e0;
+padding: 6px 9px;
+text-align: left;
+vertical-align: top;
+}
+thead th {
+background: #2c5282;
+color: #fff;
+font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+
+a { color: #2b6cb0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+nav#TOC {
+background: #f7fafc;
+border: 1px solid #e2e8f0;
+border-radius: 6px;
+padding: 14px 22px 14px 14px;
+margin: 16px 0 28px;
+page-break-after: always;
+}
+nav#TOC > ul { list-style: none; margin-left: 6px; padding: 0; }
+nav#TOC ul ul { margin-left: 18px; }
+nav#TOC > h2 { margin-top: 0; border: none; font-size: 13pt; }
+nav#TOC li { margin: 3px 0; }
+
+hr {
+border: none;
+border-top: 1px solid #cbd5e0;
+margin: 24px 0;
+}
+
+blockquote.note { border-left-color: #38b2ac; background: #e6fffa; color: #234e52; }
+blockquote.warning { border-left-color: #ed8936; background: #fffaf0; color: #7b341e; }
+blockquote.danger { border-left-color: #e53e3e; background: #fff5f5; color: #742a2a; }
+blockquote.success { border-left-color: #38a169; background: #f0fff4; color: #22543d; }
+
+@media print {
+body { font-size: 10pt; max-width: none; margin: 0; padding: 0; }
+a { color: #1a365d; }
+pre { font-size: 8.8pt; }
+nav#TOC { page-break-after: always; }
+h1, h2 { page-break-before: auto; }
+h1 { page-break-before: always; }
+h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
+}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">oom-toolkit</h1>
+<p class="subtitle">Workstation OOM hardening for systemd Linux</p>
+<p class="author">System post-mortem 2026-04-28</p>
+<p class="date">2026-04-28</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#oom-toolkit" id="toc-oom-toolkit">oom-toolkit</a></li>
+<li><a href="#project-layout" id="toc-project-layout">Project
+layout</a></li>
+<li><a href="#quick-start" id="toc-quick-start">Quick start</a></li>
+<li><a href="#make-targets" id="toc-make-targets">Make targets</a></li>
+<li><a href="#what-make-verify-actually-checks" id="toc-what-make-verify-actually-checks">What <code>make verify</code>
+actually checks</a></li>
+<li><a href="#documentation" id="toc-documentation">Documentation</a></li>
+<li><a href="#hardware-context-for-whoever-inherits-this-machine" id="toc-hardware-context-for-whoever-inherits-this-machine">Hardware
+context (for whoever inherits this machine)</a></li>
+<li><a href="#companion-alias-suggestions" id="toc-companion-alias-suggestions">Companion alias
+suggestions</a></li>
+<li><a href="#license-credits" id="toc-license-credits">License &amp;
+credits</a></li>
+</ul>
+</nav>
+<section id="oom-toolkit" class="level1">
+<h1>oom-toolkit</h1>
+<p>A small, reproducible toolkit that ensures <strong>memory exhaustion
+never again takes down the whole user session</strong> on this systemd
+Linux laptop. It was born from the 2026-04-28 incident on host
+<code>nezha</code> where 60+ user processes (Claude Code instances,
+Android build, MCP servers, IDE, browsers, terminals) were destroyed in
+a single second when the kernel OOM-killer SIGKILL’d the systemd
+user-manager itself. See <code>Crash_Report.md</code> for the full
+post-mortem.</p>
+<p>The toolkit has two moving parts:</p>
+<ol type="1">
+<li><strong><code>oom-hardening.sh</code></strong> — applies system-wide
+protection (the umbrella): <code>systemd-oomd</code>, cgroup limits on
+<code>user-.slice</code>, sysctls, logind power-key hardening, coredump
+retention.</li>
+<li><strong><code>oom-runner.sh</code></strong> — wraps individual
+workloads (the per-app limit): any command can be launched in its own
+bounded scope/service so a single runaway dies in isolation.</li>
+</ol>
+<p>Use both together. The first sets the umbrella; the second sets the
+per-leaf bounds inside it.</p>
+<hr />
+</section>
+<section id="project-layout" class="level1">
+<h1>Project layout</h1>
+<pre><code>~/Downloads/
+├── README.md                          ← this file
+├── Makefile                           ← convenience targets (make help)
+│
+├── Crash_Report.md / .html / .pdf     ← post-mortem of 2026-04-28 incident
+│
+├── oom-hardening.sh                   ← applies system-wide OOM hardening
+├── oom-runner.sh                      ← runs ANY command in a bounded cgroup
+├── build-docs.sh                      ← rebuilds HTML + PDF from .md
+├── verify.sh                          ← health check (returns non-zero if not green)
+│
+├── manuals/
+│   ├── oom-hardening-manual.md / .html / .pdf
+│   └── oom-runner-manual.md    / .html / .pdf
+│
+├── assets/
+│   └── style.css                      ← shared CSS (screen + print)
+│
+└── system-config/                     ← staging tree (informational)</code></pre>
+<hr />
+</section>
+<section id="quick-start" class="level1">
+<h1>Quick start</h1>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 0. Read the post-mortem first</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">xdg-open</span> ~/Downloads/Crash_Report.pdf</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Preview hardening, change nothing</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-C</span> ~/Downloads dry-run</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Apply hardening (sudo)</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-C</span> ~/Downloads install</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Verify everything is green</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-C</span> ~/Downloads verify</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. Use oom-runner for daily workloads</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="ex">~/Downloads/oom-runner.sh</span> <span class="at">--preset</span> claude  <span class="at">--</span> claude</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="ex">~/Downloads/oom-runner.sh</span> <span class="at">--preset</span> mcp     <span class="at">-n</span> upstash <span class="at">--</span> npm exec @upstash/context7-mcp@latest</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="ex">~/Downloads/oom-runner.sh</span> <span class="at">--preset</span> build   <span class="at">--</span> bash <span class="at">-c</span> <span class="st">&#39;cd ~/proj &amp;&amp; m -j8&#39;</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. (Optional) Stress-test the umbrella</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-C</span> ~/Downloads verify-stress</span></code></pre></div>
+<p>Add to your shell rc to make <code>oom</code> a one-letter
+command:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ~/.bashrc or ~/.zshrc</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">alias</span> oom=<span class="st">&#39;~/Downloads/oom-runner.sh&#39;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="bu">alias</span> claude=<span class="st">&#39;~/Downloads/oom-runner.sh --preset claude -- claude&#39;</span></span></code></pre></div>
+<hr />
+</section>
+<section id="make-targets" class="level1">
+<h1>Make targets</h1>
+<p>Run <code>make help</code> for the live list. Highlights:</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Target</th>
+<th>Effect</th>
+<th>Sudo?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>make help</code></td>
+<td>Print all targets (default)</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make dry-run</code></td>
+<td>Preview hardening; change nothing</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make install</code></td>
+<td>Apply hardening</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>make verify</code></td>
+<td>Health check; non-zero on warn/fail</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make verify-stress</code></td>
+<td>Verify + 16 G stress test</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make uninstall</code></td>
+<td>Remove drop-ins this toolkit installed</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>make rollback BACKUP=DIR</code></td>
+<td>Restore /etc from a backup directory</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>make docs</code></td>
+<td>Rebuild all HTML + PDF</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make docs-clean</code></td>
+<td>Delete generated HTML + PDF</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make presets</code></td>
+<td>List oom-runner presets</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make list</code></td>
+<td>List active oom-runner units</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make status UNIT=x</code></td>
+<td>Show one unit’s live status</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make logs UNIT=x</code></td>
+<td>Tail one unit’s journal (<code>-f</code>)</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make kill UNIT=x</code></td>
+<td>Stop one unit</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make clean-units</code></td>
+<td>Stop ALL oom-runner units</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make test</code></td>
+<td>Functional smoke test</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make check</code></td>
+<td>Lint shell scripts (<code>bash -n</code> + shellcheck if
+available)</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make package</code></td>
+<td>Bundle into <code>oom-toolkit-&lt;ts&gt;.tar.gz</code></td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make all</code></td>
+<td>docs + verify (typical CI)</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>make clean</code></td>
+<td>Remove generated files</td>
+<td>no</td>
+</tr>
+</tbody>
+</table>
+<hr />
+</section>
+<section id="what-make-verify-actually-checks" class="level1">
+<h1>What <code>make verify</code> actually checks</h1>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Source of truth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>All toolkit files present</td>
+<td>filesystem</td>
+</tr>
+<tr>
+<td>Kernel ≥ 5.15</td>
+<td><code>uname -r</code></td>
+</tr>
+<tr>
+<td>systemd ≥ 248</td>
+<td><code>systemctl --version</code></td>
+</tr>
+<tr>
+<td>cgroup v2 unified hierarchy</td>
+<td><code>mount</code></td>
+</tr>
+<tr>
+<td>PSI available</td>
+<td><code>/proc/pressure/memory</code></td>
+</tr>
+<tr>
+<td><code>systemd-oomd.service</code> active</td>
+<td><code>systemctl is-active</code></td>
+</tr>
+<tr>
+<td>oomd is managing <code>user.slice</code></td>
+<td><code>oomctl</code> output</td>
+</tr>
+<tr>
+<td><code>user-&lt;uid&gt;.slice</code> has memory limits</td>
+<td><code>systemctl show</code></td>
+</tr>
+<tr>
+<td><code>logind HandlePowerKey=ignore</code></td>
+<td><code>busctl get-property</code></td>
+</tr>
+<tr>
+<td><code>vm.swappiness=10</code></td>
+<td><code>sysctl -n</code></td>
+</tr>
+<tr>
+<td><code>vm.min_free_kbytes=262144</code></td>
+<td><code>sysctl -n</code></td>
+</tr>
+<tr>
+<td><code>vm.overcommit_memory=0</code></td>
+<td><code>sysctl -n</code></td>
+</tr>
+<tr>
+<td><code>vm.dirty_ratio=15</code></td>
+<td><code>sysctl -n</code></td>
+</tr>
+<tr>
+<td><code>vm.dirty_background_ratio=5</code></td>
+<td><code>sysctl -n</code></td>
+</tr>
+<tr>
+<td><code>vm.vfs_cache_pressure=50</code></td>
+<td><code>sysctl -n</code></td>
+</tr>
+<tr>
+<td>Coredump retention drop-in present</td>
+<td>filesystem</td>
+</tr>
+<tr>
+<td>Swap configured</td>
+<td><code>/proc/meminfo</code></td>
+</tr>
+<tr>
+<td><code>oom-runner.sh</code> can launch a 256M scope</td>
+<td>live exec</td>
+</tr>
+<tr>
+<td>Cgroup actually kills processes that exceed limit</td>
+<td>live OOM test</td>
+</tr>
+<tr>
+<td>(with <code>--stress</code>)
+<code>stress-ng --vm 4 --vm-bytes 16G</code> is killed</td>
+<td>live</td>
+</tr>
+</tbody>
+</table>
+<p>Exit code: <code>0</code> = all green, <code>1</code> = warnings
+only, <code>2</code> = at least one failure.</p>
+<p><code>verify.sh --json</code> produces machine-readable output for
+CI/monitoring.</p>
+<hr />
+</section>
+<section id="documentation" class="level1">
+<h1>Documentation</h1>
+<p>Each component has a full manual:</p>
+<ul>
+<li><strong><code>Crash_Report.md</code></strong> — what happened on
+2026-04-28, why, and what to do.</li>
+<li><strong><code>manuals/oom-hardening-manual.md</code></strong> —
+every option, drop-in, tuning recipe.</li>
+<li><strong><code>manuals/oom-runner-manual.md</code></strong> — every
+option, preset, scenario.</li>
+</ul>
+<p>All three are also rendered as <code>.html</code> (standalone,
+embedded CSS) and <code>.pdf</code> (via weasyprint, A4 paged media).
+Re-render any time after editing:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> docs</span></code></pre></div>
+<hr />
+</section>
+<section id="hardware-context-for-whoever-inherits-this-machine" class="level1">
+<h1>Hardware context (for whoever inherits this machine)</h1>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vendor / model</td>
+<td>Clevo NS50MU</td>
+</tr>
+<tr>
+<td>CPU</td>
+<td>Intel Core i7-1165G7 (Tiger Lake-UP3, 4C / 8T)</td>
+</tr>
+<tr>
+<td>Installed RAM</td>
+<td>64 GB (<code>MemTotal: 65,625,040 kB</code>)</td>
+</tr>
+<tr>
+<td>Max RAM the CPU can address</td>
+<td><strong>64 GB</strong> (Intel ARK spec)</td>
+</tr>
+<tr>
+<td>Swap</td>
+<td>16 GiB on NVMe</td>
+</tr>
+<tr>
+<td>Kernel</td>
+<td>6.12.61-6.12-alt1</td>
+</tr>
+<tr>
+<td>Distro</td>
+<td>ALT Linux</td>
+</tr>
+</tbody>
+</table>
+<p>Going to 128 GB on this laptop is <strong>not possible</strong> — the
+i7-1165G7 IMC caps at 64 GB regardless of physical SODIMM size. See
+<code>Crash_Report.md</code> §6.</p>
+<hr />
+</section>
+<section id="companion-alias-suggestions" class="level1">
+<h1>Companion alias suggestions</h1>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ~/.bashrc / ~/.zshrc</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="bu">alias</span> oom=<span class="st">&#39;~/Downloads/oom-runner.sh&#39;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="bu">alias</span> oom-list=<span class="st">&#39;~/Downloads/oom-runner.sh list&#39;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="bu">alias</span> oom-clean=<span class="st">&#39;~/Downloads/oom-runner.sh clean&#39;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="bu">alias</span> oom-verify=<span class="st">&#39;~/Downloads/verify.sh&#39;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Wrap your most common commands</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="bu">alias</span> claude=<span class="st">&#39;~/Downloads/oom-runner.sh --preset claude -- claude&#39;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="bu">alias</span> chromium=<span class="st">&#39;~/Downloads/oom-runner.sh --preset browser -- chromium&#39;</span></span></code></pre></div>
+<hr />
+</section>
+<section id="license-credits" class="level1">
+<h1>License &amp; credits</h1>
+<p>Internal incident-response artefact. Use freely on this host. No
+warranty.</p>
+<p>Built 2026-04-28 in response to the user-manager OOM-kill incident at
+18:36:35 MSK on <code>nezha</code>. Total downtime: 7 minutes. Total
+work lost: significant. Probability of recurrence after
+<code>make install</code>: very low.</p>
+</section>
+</body>
+</html>
