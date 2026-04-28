@@ -1,11 +1,11 @@
 ---
-title: oom-toolkit
+title: OOM Protect
 subtitle: Workstation OOM hardening for systemd Linux
 author: System post-mortem 2026-04-28
 date: 2026-04-28
 ---
 
-# oom-toolkit
+# OOM Protect
 
 A small, reproducible toolkit that ensures **memory exhaustion never again
 takes down the whole user session** on this systemd Linux laptop. It was
