@@ -321,16 +321,30 @@ Tools</a></li>
 <p><code>oom-runner.sh</code> wraps <strong>almost any command</strong>
 in its own bounded <strong>systemd transient scope</strong> (foreground)
 or <strong>service</strong> (background) so a single runaway can never
-starve the rest of your session. It is the companion to
-<code>oom-hardening.sh</code>:</p>
-<ul>
-<li><code>oom-hardening.sh</code> sets the <strong>umbrella</strong> —
-bounds for the whole user slice plus enables
+starve the rest of your session. It is <strong>layer 2</strong> of the
+three-layer toolkit:</p>
+<ol type="1">
+<li><strong><code>oom-hardening.sh</code></strong> sets the
+<strong>umbrella</strong> — bounds for the whole user slice plus enables
 <code>systemd-oomd</code>.</li>
-<li><code>oom-runner.sh</code> sets the <strong>per-workload</strong>
-bound — Claude, MCP servers, Android builds, browsers, containers, IDEs,
-ad-hoc shell pipelines.</li>
-</ul>
+<li><strong><code>oom-runner.sh</code></strong> <em>(this script)</em>
+sets the <strong>per-workload bound</strong> — Claude, MCP servers,
+Android builds, browsers, containers, IDEs, ad-hoc shell pipelines. Each
+runs in its own transient cgroup with its own MemoryMax / MemoryHigh /
+TasksMax / CPUQuota.</li>
+<li><strong><code>oom-watch/</code></strong> is the <strong>forensic
+eye</strong> — a Go daemon that samples atop and writes a Markdown
+report (with full <code>/proc/&lt;pid&gt;/cmdline</code>, PPID, parent’s
+cmdline, cgroup path, peak RSS) <strong>before</strong> thresholds
+breach. When a workload wrapped by <code>oom-runner</code> is the leak
+source, the report’s forensic-detail section names it by full argv and
+shows its cgroup path under
+<code>user.slice/.../oomrun-*.{scope,service}</code> — so you know not
+just <em>which process</em> but <em>which oom-runner unit</em> was
+involved. Install with <code>sudo make oomwatch-deploy</code>; see
+<code>manuals/oom-watch-deployment-guide.md</code> and
+<code>oom-watch-runbook.md</code>.</li>
+</ol>
 <p>Defaults are deliberately generous (<code>MemoryMax=12G</code> if you
 set nothing) so wrapping commands rarely breaks them. The actual win is:
 <strong>you can no longer exhaust the whole machine from inside one

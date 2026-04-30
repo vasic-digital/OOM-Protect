@@ -28,6 +28,34 @@ The script:
 It does **not** touch fstab, swap, GRUB, or anything that could prevent
 the next boot. Every change is reversible.
 
+## Pairs with `oom-runner` and `oom-watch`
+
+`oom-hardening.sh` is **layer 1** of the three-layer toolkit:
+
+1. **`oom-hardening.sh`** *(this script)* — the **umbrella**. Sets
+   `systemd-oomd`, the `MemoryHigh=48G` / `MemoryMax=56G` cap on
+   `user-.slice`, sysctls, and logind hardening. Run once per host;
+   re-run after major systemd or kernel upgrades to refresh drop-ins.
+2. **`oom-runner.sh`** — the **per-leaf bound**. After the umbrella
+   is up, wrap individual workloads (browser, JVM, build farm, Claude
+   Code, MCP servers) so a runaway dies in isolation rather than
+   pushing the whole user-slice toward the umbrella's ceiling. See
+   `manuals/oom-runner-manual.md`.
+3. **`oom-watch/`** — the **forensic eye**. A small Go daemon that
+   samples atop every 10 s and writes a Markdown report — including
+   each top process's full `/proc/<pid>/cmdline`, parent script,
+   cgroup path, and peak RSS — **before** thresholds breach. Read
+   `manuals/oom-watch-deployment-guide.md` to install and
+   `manuals/oom-watch-runbook.md` for incident response. Captures
+   the `user-<uid>.slice/memory.*` values into every report, so a
+   regression in the cgroup setup THIS script applies surfaces in
+   the next incident report rather than as a silent OOM cascade.
+
+The hardening script can be deployed standalone for the immediate
+crash-prevention effect. Adding `oom-runner` improves blast-radius
+isolation; adding `oom-watch` adds the forensic record so a future
+incident leaves identifiable evidence.
+
 ---
 
 # Quick Start

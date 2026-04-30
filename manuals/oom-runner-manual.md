@@ -9,13 +9,24 @@ date: 2026-04-28
 
 `oom-runner.sh` wraps **almost any command** in its own bounded **systemd
 transient scope** (foreground) or **service** (background) so a single
-runaway can never starve the rest of your session. It is the companion to
-`oom-hardening.sh`:
+runaway can never starve the rest of your session. It is **layer 2** of
+the three-layer toolkit:
 
-- `oom-hardening.sh` sets the **umbrella** — bounds for the whole user
-  slice plus enables `systemd-oomd`.
-- `oom-runner.sh` sets the **per-workload** bound — Claude, MCP servers,
-  Android builds, browsers, containers, IDEs, ad-hoc shell pipelines.
+1. **`oom-hardening.sh`** sets the **umbrella** — bounds for the whole
+   user slice plus enables `systemd-oomd`.
+2. **`oom-runner.sh`** *(this script)* sets the **per-workload bound** —
+   Claude, MCP servers, Android builds, browsers, containers, IDEs,
+   ad-hoc shell pipelines. Each runs in its own transient cgroup with
+   its own MemoryMax / MemoryHigh / TasksMax / CPUQuota.
+3. **`oom-watch/`** is the **forensic eye** — a Go daemon that samples
+   atop and writes a Markdown report (with full `/proc/<pid>/cmdline`,
+   PPID, parent's cmdline, cgroup path, peak RSS) **before** thresholds
+   breach. When a workload wrapped by `oom-runner` is the leak source,
+   the report's forensic-detail section names it by full argv and shows
+   its cgroup path under `user.slice/.../oomrun-*.{scope,service}` — so
+   you know not just *which process* but *which oom-runner unit* was
+   involved. Install with `sudo make oomwatch-deploy`; see
+   `manuals/oom-watch-deployment-guide.md` and `oom-watch-runbook.md`.
 
 Defaults are deliberately generous (`MemoryMax=12G` if you set nothing) so
 wrapping commands rarely breaks them. The actual win is: **you can no

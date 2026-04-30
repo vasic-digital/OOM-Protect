@@ -255,7 +255,11 @@ h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
 </header>
 <nav id="TOC" role="doc-toc">
 <ul>
-<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#overview" id="toc-overview">Overview</a>
+<ul>
+<li><a href="#pairs-with-oom-runner-and-oom-watch" id="toc-pairs-with-oom-runner-and-oom-watch">Pairs with
+<code>oom-runner</code> and <code>oom-watch</code></a></li>
+</ul></li>
 <li><a href="#quick-start" id="toc-quick-start">Quick Start</a></li>
 <li><a href="#what-the-script-installs" id="toc-what-the-script-installs">What the script installs</a></li>
 <li><a href="#command-reference" id="toc-command-reference">Command
@@ -336,7 +340,40 @@ user-manager can never again be the OOM victim.</li>
 </ol>
 <p>It does <strong>not</strong> touch fstab, swap, GRUB, or anything
 that could prevent the next boot. Every change is reversible.</p>
+<section id="pairs-with-oom-runner-and-oom-watch" class="level2">
+<h2>Pairs with <code>oom-runner</code> and <code>oom-watch</code></h2>
+<p><code>oom-hardening.sh</code> is <strong>layer 1</strong> of the
+three-layer toolkit:</p>
+<ol type="1">
+<li><strong><code>oom-hardening.sh</code></strong> <em>(this
+script)</em> — the <strong>umbrella</strong>. Sets
+<code>systemd-oomd</code>, the <code>MemoryHigh=48G</code> /
+<code>MemoryMax=56G</code> cap on <code>user-.slice</code>, sysctls, and
+logind hardening. Run once per host; re-run after major systemd or
+kernel upgrades to refresh drop-ins.</li>
+<li><strong><code>oom-runner.sh</code></strong> — the <strong>per-leaf
+bound</strong>. After the umbrella is up, wrap individual workloads
+(browser, JVM, build farm, Claude Code, MCP servers) so a runaway dies
+in isolation rather than pushing the whole user-slice toward the
+umbrella’s ceiling. See <code>manuals/oom-runner-manual.md</code>.</li>
+<li><strong><code>oom-watch/</code></strong> — the <strong>forensic
+eye</strong>. A small Go daemon that samples atop every 10 s and writes
+a Markdown report — including each top process’s full
+<code>/proc/&lt;pid&gt;/cmdline</code>, parent script, cgroup path, and
+peak RSS — <strong>before</strong> thresholds breach. Read
+<code>manuals/oom-watch-deployment-guide.md</code> to install and
+<code>manuals/oom-watch-runbook.md</code> for incident response.
+Captures the <code>user-&lt;uid&gt;.slice/memory.*</code> values into
+every report, so a regression in the cgroup setup THIS script applies
+surfaces in the next incident report rather than as a silent OOM
+cascade.</li>
+</ol>
+<p>The hardening script can be deployed standalone for the immediate
+crash-prevention effect. Adding <code>oom-runner</code> improves
+blast-radius isolation; adding <code>oom-watch</code> adds the forensic
+record so a future incident leaves identifiable evidence.</p>
 <hr />
+</section>
 </section>
 <section id="quick-start" class="level1">
 <h1>Quick Start</h1>
