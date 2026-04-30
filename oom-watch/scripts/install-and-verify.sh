@@ -229,7 +229,10 @@ if (( NO_INSTALL == 0 )); then
             err "Go toolchain required to build oomwatch. Install Go (>=1.22) and re-run."
             exit 1
         fi
-        (cd "$REPO_ROOT/oom-watch" && go build -o oomwatch ./cmd/oomwatch)
+        # -buildvcs=false avoids 'error obtaining VCS status' when the repo
+        # lives on a mount owned by a different UID than the builder (e.g. an
+        # external drive owned by the user, but root is running the script).
+        (cd "$REPO_ROOT/oom-watch" && go build -buildvcs=false -o oomwatch ./cmd/oomwatch)
     fi
     [[ -x "$bin" ]] || { err "build failed; binary not produced"; exit 1; }
     ok "binary built: $bin"
@@ -294,8 +297,13 @@ fi
 
 # ---- step 3: enable + restart ---------------------------------------------
 
-hdr "3. systemd: daemon-reload + enable + restart"
+hdr "3. systemd: daemon-reload + reset-failed + enable + restart"
 systemctl daemon-reload
+# A previous bad config can leave the unit in restart-throttled state
+# ('Start request repeated too quickly'). reset-failed clears the rate
+# limit so the next restart actually runs ExecStart.
+systemctl reset-failed oom-watch.service 2>/dev/null || true
+ok "reset-failed cleared (unit can start fresh)"
 if ! systemctl is-enabled --quiet oom-watch.service 2>/dev/null; then
     systemctl enable oom-watch.service
     ok "service enabled"

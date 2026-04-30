@@ -6,6 +6,13 @@ After=systemd-journald.service
 Wants=systemd-journald.service
 # Don't compete with system early-boot; this daemon is forensic, not critical.
 DefaultDependencies=yes
+# StartLimit* MUST live in [Unit] on systemd >= 230. Older versions
+# tolerated them under [Service]; systemd 258 (ALT 11) emits
+# "Unknown key 'StartLimitIntervalSec' in section [Service], ignoring."
+# Three failures within 60 s and the unit gives up — operator must
+# investigate (run `systemctl reset-failed oom-watch.service` to clear).
+StartLimitIntervalSec=60s
+StartLimitBurst=3
 
 [Service]
 Type=simple
@@ -15,8 +22,6 @@ ExecStart=/usr/local/sbin/oomwatch -config /etc/oom-watch/config.json
 # operator notices rather than masking a real bug.
 Restart=on-failure
 RestartSec=5s
-StartLimitIntervalSec=60s
-StartLimitBurst=3
 
 # Permissions: oom-watch needs to read /proc, /sys/fs/cgroup, and to spawn
 # atop. atop wants to read /proc/<pid>/stat for every process and /proc/kallsyms,
@@ -32,7 +37,12 @@ ProtectSystem=strict
 ReadWritePaths=/var/log/oom-watch /var/lib/oom-watch
 ProtectHome=read-only
 PrivateTmp=yes
-ProtectControlGroups=read-only
+# ProtectControlGroups: only 'yes' or 'no' are universally accepted.
+# Newer systemd added 'private' / 'strict' but older releases (and ALT
+# Linux 11's systemd 258) reject anything other than the boolean form.
+# 'yes' makes /sys/fs/cgroup read-only inside the unit, which is what
+# we need — the daemon reads cgroup counters but never writes them.
+ProtectControlGroups=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectKernelLogs=yes

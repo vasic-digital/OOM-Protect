@@ -210,13 +210,13 @@ oomwatch oomwatch-build: $(OOMWATCH_BIN)
 
 $(OOMWATCH_BIN): $(shell find $(OOMWATCH_DIR) -name '*.go' -not -name '*_test.go' 2>/dev/null)
 	@printf "$(B)Building oomwatch...$(C)\n"
-	@cd $(OOMWATCH_DIR) && go build -o oomwatch ./cmd/oomwatch
+	@cd $(OOMWATCH_DIR) && go build -buildvcs=false -o oomwatch ./cmd/oomwatch
 	@printf "$(G)built:$(C) $(OOMWATCH_BIN)\n"
 
 # In-tree memory hog used by challenge-real-pressure.sh; bounded at 16 GiB / 5min.
 oommemhog-build:
 	@printf "$(B)Building oommemhog (real-pressure test driver)...$(C)\n"
-	@cd $(OOMWATCH_DIR) && go build -o oommemhog ./cmd/oommemhog
+	@cd $(OOMWATCH_DIR) && go build -buildvcs=false -o oommemhog ./cmd/oommemhog
 	@printf "$(G)built:$(C) $(OOMWATCH_DIR)/oommemhog\n"
 
 oomwatch-vet:
