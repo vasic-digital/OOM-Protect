@@ -159,6 +159,88 @@ Re-running is also the recommended remediation when something has drifted on the
 
 ---
 
+## 6a. The diagnostic bundler — `make oomwatch-diagnose`
+
+When a deploy fails and you want every relevant piece of state in one paste-able file, run:
+
+```bash
+sudo make oomwatch-diagnose
+```
+
+…or, when already root:
+
+```bash
+make oomwatch-diagnose
+```
+
+The script (`oom-watch/scripts/diagnose.sh`) writes a single `/tmp/oomwatch-diagnose-<timestamp>.log` containing 16 numbered sections — every command's output is captured, even when the command itself fails (the script intentionally runs with `set -u` but **without** `set -e`, so one section's failure doesn't abort the others; failures are themselves diagnostic evidence).
+
+### What the bundle captures
+
+| § | Section | Why |
+|---:|---|---|
+| 0 | Timestamp + host identity | Pin the snapshot in time |
+| 1 | `uname -a` + `/etc/os-release` | Distro / kernel context |
+| 2 | Tool versions (atop, systemctl, go, make, git) | Rule out version skew |
+| 3 | Repo state: HEAD commit, dirty files, remotes, branch tracking | Confirm you're on the expected commit; catch a `git pull` that no-op'd because of conflicts |
+| 4 | First 5 lines + SHA256 of the SHIPPED `oom-watch.example.json` in the repo | Proves whether the example in your tree is the fixed version |
+| 5 | `ls -la` of every install path (binary, config, unit, log dirs, lib dir) | Reveals partial installs |
+| 6 | Full `cat` + SHA256 of `/etc/oom-watch/config.json` | The single most important artefact when the daemon fails to start |
+| 7 | `oomwatch -dry-run` against the installed config + rc | The validator's verdict in one line |
+| 8 | `systemctl is-enabled` / `is-active` / `is-failed` / `status -n 50` | Unit lifecycle state |
+| 9 | Full `cat` of `/etc/systemd/system/oom-watch.service` | Catches sandbox / capability drift |
+| 10 | `journalctl -u oom-watch.service -n 200 --no-pager` | The daemon's actual reason for exiting |
+| 11 | `/var/log/oom-watch/reports/` listing + count | Has the daemon ever produced a report? |
+| 12 | A live `atop -PMEM,PSI,CPL 1 2` sample | Sanity check that atop ITSELF works on this host |
+| 13 | A full `make oomwatch-deploy` run with all step headers and any EXIT-trap dump | Reproduces the failure under instrumentation |
+| 14 | Post-deploy `is-active` + `status -n 30` | Final unit state after the deploy attempt |
+| 15 | Post-deploy `journalctl -n 50` | What the daemon said during the most recent attempt |
+
+### Flags
+
+| Flag | Effect |
+|---|---|
+| `--no-deploy` | Skip §13–15 (don't run `make oomwatch-deploy`); snapshot only the current state. Use when you want to capture context without disturbing a stable system. |
+| `--help`, `-h` | Print the script's header documentation and exit. |
+
+Pass flags via `make` like so:
+
+```bash
+make oomwatch-diagnose DIAGNOSE_FLAGS="--no-deploy"
+```
+
+### Privacy considerations
+
+The bundle contains:
+
+- Your hostname.
+- Process names from `atop -PMEM,PSI,CPL` (typically only top-level command names, no arguments).
+- The last 200 journal lines for `oom-watch.service` (daemon-internal logs only — not other unit logs).
+
+It does **not** contain:
+
+- Other users' processes' command lines.
+- Other systemd units' journal entries.
+- Disk contents beyond the named config / unit files.
+
+The log file is written to `/tmp/`, which most distros clear on reboot. The repository's `.gitignore` excludes `oomwatch-diagnose-*.log` and `*.diagnose.log` so a copy accidentally placed in the working tree won't be committed.
+
+### Typical workflow
+
+```bash
+# 1. Reproduce the failure under the diagnostic harness:
+sudo make oomwatch-diagnose
+
+# 2. Note the printed log path (e.g. /tmp/oomwatch-diagnose-20260430-163342.log).
+
+# 3. Read it yourself first — most issues are obvious from the §6 cat
+#    (config) and §7 dry-run rc + §10 journal.
+
+# 4. If you need help, paste the full log into your support channel.
+```
+
+---
+
 ## 7. Failure modes
 
 Every failure surfaces a specific error from the script (above the EXIT-trap diagnostic dump). The diagnostic dump always includes `systemctl status`, journal tail, config, unit file, and report directory listing.

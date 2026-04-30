@@ -288,6 +288,15 @@ Journal sanity check</a></li>
 <li><a href="#exit-codes" id="toc-exit-codes">5. Exit codes</a></li>
 <li><a href="#idempotency-and-re-running" id="toc-idempotency-and-re-running">6. Idempotency and
 re-running</a></li>
+<li><a href="#a.-the-diagnostic-bundler-make-oomwatch-diagnose" id="toc-a.-the-diagnostic-bundler-make-oomwatch-diagnose">6a. The
+diagnostic bundler — <code>make oomwatch-diagnose</code></a>
+<ul>
+<li><a href="#what-the-bundle-captures" id="toc-what-the-bundle-captures">What the bundle captures</a></li>
+<li><a href="#flags-1" id="toc-flags-1">Flags</a></li>
+<li><a href="#privacy-considerations" id="toc-privacy-considerations">Privacy considerations</a></li>
+<li><a href="#typical-workflow" id="toc-typical-workflow">Typical
+workflow</a></li>
+</ul></li>
 <li><a href="#failure-modes" id="toc-failure-modes">7. Failure
 modes</a></li>
 <li><a href="#reverse-and-uninstall" id="toc-reverse-and-uninstall">8.
@@ -591,6 +600,193 @@ auto-remediate if broken.</li>
 drifted on the host — it converges the host to the deployed state.</p>
 <hr />
 </section>
+<section id="a.-the-diagnostic-bundler-make-oomwatch-diagnose" class="level2">
+<h2>6a. The diagnostic bundler —
+<code>make oomwatch-diagnose</code></h2>
+<p>When a deploy fails and you want every relevant piece of state in one
+paste-able file, run:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-diagnose</span></code></pre></div>
+<p>…or, when already root:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> oomwatch-diagnose</span></code></pre></div>
+<p>The script (<code>oom-watch/scripts/diagnose.sh</code>) writes a
+single <code>/tmp/oomwatch-diagnose-&lt;timestamp&gt;.log</code>
+containing 16 numbered sections — every command’s output is captured,
+even when the command itself fails (the script intentionally runs with
+<code>set -u</code> but <strong>without</strong> <code>set -e</code>, so
+one section’s failure doesn’t abort the others; failures are themselves
+diagnostic evidence).</p>
+<section id="what-the-bundle-captures" class="level3">
+<h3>What the bundle captures</h3>
+<table>
+<colgroup>
+<col style="width: 40%" />
+<col style="width: 30%" />
+<col style="width: 30%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: right;">§</th>
+<th>Section</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0</td>
+<td>Timestamp + host identity</td>
+<td>Pin the snapshot in time</td>
+</tr>
+<tr>
+<td style="text-align: right;">1</td>
+<td><code>uname -a</code> + <code>/etc/os-release</code></td>
+<td>Distro / kernel context</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td>Tool versions (atop, systemctl, go, make, git)</td>
+<td>Rule out version skew</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td>Repo state: HEAD commit, dirty files, remotes, branch tracking</td>
+<td>Confirm you’re on the expected commit; catch a <code>git pull</code>
+that no-op’d because of conflicts</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td>First 5 lines + SHA256 of the SHIPPED
+<code>oom-watch.example.json</code> in the repo</td>
+<td>Proves whether the example in your tree is the fixed version</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td><code>ls -la</code> of every install path (binary, config, unit, log
+dirs, lib dir)</td>
+<td>Reveals partial installs</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td>Full <code>cat</code> + SHA256 of
+<code>/etc/oom-watch/config.json</code></td>
+<td>The single most important artefact when the daemon fails to
+start</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td><code>oomwatch -dry-run</code> against the installed config +
+rc</td>
+<td>The validator’s verdict in one line</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td><code>systemctl is-enabled</code> / <code>is-active</code> /
+<code>is-failed</code> / <code>status -n 50</code></td>
+<td>Unit lifecycle state</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td>Full <code>cat</code> of
+<code>/etc/systemd/system/oom-watch.service</code></td>
+<td>Catches sandbox / capability drift</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td><code>journalctl -u oom-watch.service -n 200 --no-pager</code></td>
+<td>The daemon’s actual reason for exiting</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td><code>/var/log/oom-watch/reports/</code> listing + count</td>
+<td>Has the daemon ever produced a report?</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td>A live <code>atop -PMEM,PSI,CPL 1 2</code> sample</td>
+<td>Sanity check that atop ITSELF works on this host</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td>A full <code>make oomwatch-deploy</code> run with all step headers
+and any EXIT-trap dump</td>
+<td>Reproduces the failure under instrumentation</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
+<td>Post-deploy <code>is-active</code> + <code>status -n 30</code></td>
+<td>Final unit state after the deploy attempt</td>
+</tr>
+<tr>
+<td style="text-align: right;">15</td>
+<td>Post-deploy <code>journalctl -n 50</code></td>
+<td>What the daemon said during the most recent attempt</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="flags-1" class="level3">
+<h3>Flags</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--no-deploy</code></td>
+<td>Skip §13–15 (don’t run <code>make oomwatch-deploy</code>); snapshot
+only the current state. Use when you want to capture context without
+disturbing a stable system.</td>
+</tr>
+<tr>
+<td><code>--help</code>, <code>-h</code></td>
+<td>Print the script’s header documentation and exit.</td>
+</tr>
+</tbody>
+</table>
+<p>Pass flags via <code>make</code> like so:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> oomwatch-diagnose DIAGNOSE_FLAGS=<span class="st">&quot;--no-deploy&quot;</span></span></code></pre></div>
+</section>
+<section id="privacy-considerations" class="level3">
+<h3>Privacy considerations</h3>
+<p>The bundle contains:</p>
+<ul>
+<li>Your hostname.</li>
+<li>Process names from <code>atop -PMEM,PSI,CPL</code> (typically only
+top-level command names, no arguments).</li>
+<li>The last 200 journal lines for <code>oom-watch.service</code>
+(daemon-internal logs only — not other unit logs).</li>
+</ul>
+<p>It does <strong>not</strong> contain:</p>
+<ul>
+<li>Other users’ processes’ command lines.</li>
+<li>Other systemd units’ journal entries.</li>
+<li>Disk contents beyond the named config / unit files.</li>
+</ul>
+<p>The log file is written to <code>/tmp/</code>, which most distros
+clear on reboot. The repository’s <code>.gitignore</code> excludes
+<code>oomwatch-diagnose-*.log</code> and <code>*.diagnose.log</code> so
+a copy accidentally placed in the working tree won’t be committed.</p>
+</section>
+<section id="typical-workflow" class="level3">
+<h3>Typical workflow</h3>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Reproduce the failure under the diagnostic harness:</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-diagnose</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Note the printed log path (e.g. /tmp/oomwatch-diagnose-20260430-163342.log).</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Read it yourself first — most issues are obvious from the §6 cat</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co">#    (config) and §7 dry-run rc + §10 journal.</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. If you need help, paste the full log into your support channel.</span></span></code></pre></div>
+<hr />
+</section>
+</section>
 <section id="failure-modes" class="level2">
 <h2>7. Failure modes</h2>
 <p>Every failure surfaces a specific error from the script (above the
@@ -672,11 +868,11 @@ the unit file (default <code>root</code>).</td>
 <h2>8. Reverse and uninstall</h2>
 <p>There is no first-class uninstall yet (TODO). To manually
 uninstall:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl disable <span class="at">--now</span> oom-watch.service</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm /etc/systemd/system/oom-watch.service</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl daemon-reload</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm /usr/local/sbin/oomwatch</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm <span class="at">-rf</span> /etc/oom-watch /var/log/oom-watch /var/lib/oom-watch</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl disable <span class="at">--now</span> oom-watch.service</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm /etc/systemd/system/oom-watch.service</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl daemon-reload</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm /usr/local/sbin/oomwatch</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm <span class="at">-rf</span> /etc/oom-watch /var/log/oom-watch /var/lib/oom-watch</span></code></pre></div>
 <p>Note: removing <code>/var/log/oom-watch</code> deletes any past
 forensic reports. If you want to keep them, move the directory aside
 first.</p>
@@ -684,26 +880,26 @@ first.</p>
 </section>
 <section id="after-deploy-live-operations" class="level2">
 <h2>9. After deploy: live operations</h2>
-<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Tail the daemon log:</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">-fu</span> oom-watch.service</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># List recent reports:</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-lt</span> /var/log/oom-watch/reports/ <span class="kw">|</span> <span class="fu">head</span> <span class="at">-20</span></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Open the most recent report (any severity):</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-t</span> /var/log/oom-watch/reports/<span class="pp">*</span>.md <span class="kw">|</span> <span class="fu">head</span> <span class="at">-1</span> <span class="kw">|</span> <span class="fu">xargs</span> less</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Open the most recent CRITICAL:</span></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-t</span> /var/log/oom-watch/reports/<span class="pp">*</span>-critical.md <span class="dv">2</span><span class="op">&gt;</span>/dev/null <span class="kw">|</span> <span class="fu">head</span> <span class="at">-1</span> <span class="kw">|</span> <span class="fu">xargs</span> less</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Show effective config (defaults overlaid with the file):</span></span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-print-config</span></span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Force a diagnostic report right now:</span></span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-one-shot</span></span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Clean up old reports (cron candidate):</span></span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> find /var/log/oom-watch/reports <span class="at">-name</span> <span class="st">&#39;*.md&#39;</span> <span class="at">-mtime</span> +30 <span class="at">-delete</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Tail the daemon log:</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">-fu</span> oom-watch.service</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co"># List recent reports:</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-lt</span> /var/log/oom-watch/reports/ <span class="kw">|</span> <span class="fu">head</span> <span class="at">-20</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Open the most recent report (any severity):</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-t</span> /var/log/oom-watch/reports/<span class="pp">*</span>.md <span class="kw">|</span> <span class="fu">head</span> <span class="at">-1</span> <span class="kw">|</span> <span class="fu">xargs</span> less</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Open the most recent CRITICAL:</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-t</span> /var/log/oom-watch/reports/<span class="pp">*</span>-critical.md <span class="dv">2</span><span class="op">&gt;</span>/dev/null <span class="kw">|</span> <span class="fu">head</span> <span class="at">-1</span> <span class="kw">|</span> <span class="fu">xargs</span> less</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Show effective config (defaults overlaid with the file):</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-print-config</span></span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Force a diagnostic report right now:</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-one-shot</span></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Clean up old reports (cron candidate):</span></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> find /var/log/oom-watch/reports <span class="at">-name</span> <span class="st">&#39;*.md&#39;</span> <span class="at">-mtime</span> +30 <span class="at">-delete</span></span></code></pre></div>
 <hr />
 </section>
 <section id="constitution-alignment-article-i" class="level2">

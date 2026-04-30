@@ -51,7 +51,7 @@ CHALLENGES   := $(ROOT)/challenges/run-all.sh
         docs docs-clean test list status logs kill clean-units \
         presets package clean all check \
         oomwatch oomwatch-build oomwatch-test oomwatch-vet \
-        oomwatch-install oomwatch-deploy oomwatch-clean \
+        oomwatch-install oomwatch-deploy oomwatch-diagnose oomwatch-clean \
         oommemhog-build challenges
 
 # -----------------------------------------------------------------------------
@@ -92,6 +92,7 @@ help:
 	@printf "    make challenges           Run E2E Challenges (anti-bluff)\n"
 	@printf "    make oomwatch-install     Install binary, config skeleton, systemd unit (sudo)\n"
 	@printf "    make oomwatch-deploy      Install + enable + start + verify (one shot, sudo)\n"
+	@printf "    make oomwatch-diagnose    Collect full diagnostic into a log file (sudo)\n"
 	@printf "    make oommemhog-build      Build the in-tree memory hog used by real-pressure Challenge\n"
 	@printf "    make oomwatch-clean       Remove built binaries\n"
 
@@ -250,3 +251,11 @@ oomwatch-clean:
 # diagnostics dump on any failure. Idempotent. Safe to re-run.
 oomwatch-deploy:
 	@bash $(OOMWATCH_DIR)/scripts/install-and-verify.sh
+
+# Collect everything needed to debug an oom-watch failure into one log
+# file. Runs `make oomwatch-deploy` as part of the capture so the
+# diagnostic includes the full deploy step-by-step output, not just an
+# after-the-fact snapshot. Pass DIAGNOSE_FLAGS="--no-deploy" to skip the
+# deploy run and only snapshot current state.
+oomwatch-diagnose:
+	@bash $(OOMWATCH_DIR)/scripts/diagnose.sh $(DIAGNOSE_FLAGS)

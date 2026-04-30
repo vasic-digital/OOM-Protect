@@ -5,6 +5,14 @@ oom-watch/oommemhog
 # Generated tarballs
 oom-toolkit-*.tar.gz
 
+# Diagnostic log files produced by `make oomwatch-diagnose`. The script
+# writes to /tmp/ by design, but if a contributor copies a log into the
+# repo for review (or a future script change emits one here) we don't
+# want it tracked. The log can contain hostnames, journal extracts, and
+# process names from the user's actual machine — not appropriate for VCS.
+oomwatch-diagnose-*.log
+*.diagnose.log
+
 # Editor / OS noise
 *.swp
 .DS_Store
