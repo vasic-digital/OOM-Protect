@@ -78,6 +78,14 @@ atop 2.x emits one PRM row per kernel thread; non-leader rows duplicate the pare
 
 Tests: `TestParse_RealFixture` asserts `IsLeader` is decoded correctly for `y`, `n`, and old-style (no flag) rows. `TestTopProcesses_FiltersNonLeaders` asserts the snapshot drops non-leaders before they reach the report. `challenge-real-atop.sh` asserts no PID appears more than once in the top-mem table when running real atop on the host.
 
+### Why install validates with `-dry-run` BEFORE enabling the unit
+
+A subtle bluff hit us once: the shipped `oom-watch.example.json` carried a `_comment` JSON field for self-documentation, but `config.Load` uses `DisallowUnknownFields()` to reject typos. The example was thus a config the parser refused. `make oomwatch-install` copied it verbatim to `/etc/oom-watch/config.json`, and the systemd unit cycled `activating → failed` with `exit-code=2` — accurate, but useless to the operator who didn't know which exit code maps to which failure class.
+
+`install-and-verify.sh` now runs `oomwatch -dry-run -config /etc/oom-watch/config.json` between *install* and *enable*. A failure surfaces the validator's exact diagnostic ("unknown field `_comment`" / "memory_used_ratio: warn must be ≤ critical" / etc.) plus a remediation paragraph, and the script aborts before touching systemd.
+
+`challenges/challenge-config-validation.sh` carries the regression: a final assertion runs `oomwatch -dry-run` against the *shipped* `oom-watch.example.json`. A future commit that re-introduces an unknown field there will fail the test, not the user's first install.
+
 ### Why "best-effort" snapshot capture
 
 A perfect-or-nothing snapshot would miss the most important reports — the ones produced under degraded conditions where /proc/pressure is unreadable or journalctl times out. A report with 8 of 10 sections + a `Capture errors` section that names the missing two is far more useful than no report at all. Tests enforce this: `TestCapture_PartialFailure` asserts the snapshot is non-nil and `Errors` lists the missing files.

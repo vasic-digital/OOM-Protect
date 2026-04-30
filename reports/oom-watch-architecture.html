@@ -212,6 +212,9 @@ an <code>OnIncident</code> callback instead of monitor importing
 snapshot</a></li>
 <li><a href="#why-filter-prm-at-the-display-layer-instead-of-the-parser" id="toc-why-filter-prm-at-the-display-layer-instead-of-the-parser">Why
 filter PRM at the display layer instead of the parser</a></li>
+<li><a href="#why-install-validates-with--dry-run-before-enabling-the-unit" id="toc-why-install-validates-with--dry-run-before-enabling-the-unit">Why
+install validates with <code>-dry-run</code> BEFORE enabling the
+unit</a></li>
 <li><a href="#why-best-effort-snapshot-capture" id="toc-why-best-effort-snapshot-capture">Why “best-effort” snapshot
 capture</a></li>
 <li><a href="#why-atomic-writes" id="toc-why-atomic-writes">Why atomic
@@ -350,6 +353,30 @@ ones — a parser-time filter would silently drop everything.</li>
 drops non-leaders before they reach the report.
 <code>challenge-real-atop.sh</code> asserts no PID appears more than
 once in the top-mem table when running real atop on the host.</p>
+</section>
+<section id="why-install-validates-with--dry-run-before-enabling-the-unit" class="level3">
+<h3>Why install validates with <code>-dry-run</code> BEFORE enabling the
+unit</h3>
+<p>A subtle bluff hit us once: the shipped
+<code>oom-watch.example.json</code> carried a <code>_comment</code> JSON
+field for self-documentation, but <code>config.Load</code> uses
+<code>DisallowUnknownFields()</code> to reject typos. The example was
+thus a config the parser refused. <code>make oomwatch-install</code>
+copied it verbatim to <code>/etc/oom-watch/config.json</code>, and the
+systemd unit cycled <code>activating → failed</code> with
+<code>exit-code=2</code> — accurate, but useless to the operator who
+didn’t know which exit code maps to which failure class.</p>
+<p><code>install-and-verify.sh</code> now runs
+<code>oomwatch -dry-run -config /etc/oom-watch/config.json</code>
+between <em>install</em> and <em>enable</em>. A failure surfaces the
+validator’s exact diagnostic (“unknown field <code>_comment</code>” /
+“memory_used_ratio: warn must be ≤ critical” / etc.) plus a remediation
+paragraph, and the script aborts before touching systemd.</p>
+<p><code>challenges/challenge-config-validation.sh</code> carries the
+regression: a final assertion runs <code>oomwatch -dry-run</code>
+against the <em>shipped</em> <code>oom-watch.example.json</code>. A
+future commit that re-introduces an unknown field there will fail the
+test, not the user’s first install.</p>
 </section>
 <section id="why-best-effort-snapshot-capture" class="level3">
 <h3>Why “best-effort” snapshot capture</h3>

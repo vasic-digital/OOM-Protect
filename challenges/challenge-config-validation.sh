@@ -45,4 +45,15 @@ EOF
 "$bin" -config "$sandbox/good.json" -dry-run >/dev/null
 chal_ok "good config passes -dry-run"
 
-chal_summary "verified: invalid threshold ordering is rejected (rc=$rc), unknown fields are rejected (rc=$rc2), and a minimal valid config succeeds"
+# The shipped example config MUST itself pass -dry-run. We were burned once
+# when oom-watch.example.json contained a _comment key that was rejected
+# by DisallowUnknownFields, so 'make oomwatch-install' copied a broken
+# config to /etc/oom-watch/config.json and the daemon refused to start.
+# Anti-bluff: this assertion would have failed on that commit.
+example_cfg="$(chal_repo_root)/oom-watch/config/oom-watch.example.json"
+[[ -f "$example_cfg" ]] || chal_fail "shipped example config not found at $example_cfg"
+"$bin" -config "$example_cfg" -dry-run >/dev/null \
+    || chal_fail "shipped example config $example_cfg fails -dry-run; would brick a fresh install"
+chal_ok "shipped example config passes -dry-run (no install-time bricking)"
+
+chal_summary "verified: invalid threshold ordering is rejected (rc=$rc), unknown fields are rejected (rc=$rc2), a minimal valid config succeeds, AND the shipped oom-watch.example.json itself passes -dry-run"

@@ -363,9 +363,26 @@ but oom-watch does not depend on those logs).</li>
 </section>
 <section id="install" class="level2">
 <h2>Install</h2>
-<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-install</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl enable <span class="at">--now</span> oom-watch.service</span></code></pre></div>
-<p>This places:</p>
+<p>The recommended path is the one-shot installer + verifier:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-deploy        <span class="co"># or, when already root: make oomwatch-deploy</span></span></code></pre></div>
+<p>This wraps <code>oomwatch-install</code> with:
+<code>daemon-reload</code>, <code>enable</code>, <code>restart</code>, a
+30 s <code>is-active</code> poll, a journal check that
+<code>&quot;atop located&quot;</code> appears (proves the daemon reached its
+sample loop), a 60 s wait for the first report, and a forced
+<code>-one-shot</code> if the host is calm enough that no threshold
+trips. <strong>It validates <code>/etc/oom-watch/config.json</code> with
+<code>-dry-run</code> BEFORE asking systemd to start the unit</strong>,
+so a bad config produces the precise validator error rather than a
+cryptic <code>systemctl status: exit-code=2</code>. On any failure the
+script’s EXIT trap dumps <code>systemctl status</code>, the last 50
+journal lines, the config and unit files, and a listing of the report
+directory.</p>
+<p>If you prefer the legacy two-step procedure:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-install</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl enable <span class="at">--now</span> oom-watch.service</span></code></pre></div>
+<p><code>oomwatch-install</code> (and therefore
+<code>oomwatch-deploy</code>) places:</p>
 <ul>
 <li><code>/usr/local/sbin/oomwatch</code></li>
 <li><code>/etc/oom-watch/config.json</code> (from
@@ -578,25 +595,25 @@ never observable.</p>
 </section>
 <section id="operational-tasks" class="level2">
 <h2>Operational tasks</h2>
-<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Take one diagnostic report right now (also useful as a smoke test).</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-one-shot</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Tail live reports as they appear.</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-lt</span> /var/log/oom-watch/reports/ <span class="kw">|</span> <span class="fu">head</span> <span class="at">-10</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co"># View the most recent critical report.</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-t</span> /var/log/oom-watch/reports/<span class="pp">*</span>-critical.md <span class="dv">2</span><span class="op">&gt;</span>/dev/null <span class="kw">|</span> <span class="fu">head</span> <span class="at">-1</span> <span class="kw">|</span> <span class="fu">xargs</span> less</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Validate config before reload.</span></span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-dry-run</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Check effective config (defaults + file overlay).</span></span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-print-config</span></span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Service control.</span></span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl status oom-watch</span>
-<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart oom-watch</span>
-<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">-fu</span> oom-watch</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Take one diagnostic report right now (also useful as a smoke test).</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-one-shot</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Tail live reports as they appear.</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-lt</span> /var/log/oom-watch/reports/ <span class="kw">|</span> <span class="fu">head</span> <span class="at">-10</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co"># View the most recent critical report.</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-t</span> /var/log/oom-watch/reports/<span class="pp">*</span>-critical.md <span class="dv">2</span><span class="op">&gt;</span>/dev/null <span class="kw">|</span> <span class="fu">head</span> <span class="at">-1</span> <span class="kw">|</span> <span class="fu">xargs</span> less</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Validate config before reload.</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-dry-run</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Check effective config (defaults + file overlay).</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-print-config</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Service control.</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl status oom-watch</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart oom-watch</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">-fu</span> oom-watch</span></code></pre></div>
 </section>
 <section id="real-pressure-validation-challenge-harness" class="level2">
 <h2>Real-pressure validation (Challenge harness)</h2>
@@ -604,8 +621,8 @@ never observable.</p>
 <code>oom-watch/cmd/oommemhog/</code> and an end-to-end Challenge
 <code>challenges/challenge-real-pressure.sh</code> that exercises the
 entire detection pipeline against actual host pressure:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> oommemhog-build        <span class="co"># build the in-tree allocator</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> challenges/challenge-real-pressure.sh</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> oommemhog-build        <span class="co"># build the in-tree allocator</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> challenges/challenge-real-pressure.sh</span></code></pre></div>
 <p><code>oommemhog</code> allocates a bounded amount of memory (capped
 at 16 GiB / 5 min hold) and <strong>touches every 4 KiB page</strong> so
 MemAvailable actually drops — without that, Linux’s zero-page CoW would
@@ -688,6 +705,16 @@ default <code>IsLeader=true</code> for lossless back-compat.</p>
 <td>daemon exits 1 with <code>atop binary not found</code></td>
 <td>atop not installed</td>
 <td>install atop on the host</td>
+</tr>
+<tr>
+<td>systemd unit cycles <code>activating → failed</code>,
+<code>systemctl status</code> shows
+<code>code=exited, status=2</code></td>
+<td>invalid <code>/etc/oom-watch/config.json</code> (unknown field, bad
+threshold ordering, etc.)</td>
+<td><code>oomwatch -config /etc/oom-watch/config.json -dry-run</code>
+prints the precise error. Fix the file or <code>rm</code> it and re-run
+<code>make oomwatch-deploy</code> to copy the current example.</td>
 </tr>
 <tr>
 <td>daemon starts, no reports ever</td>

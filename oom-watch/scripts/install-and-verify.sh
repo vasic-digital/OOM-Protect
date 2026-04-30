@@ -137,6 +137,25 @@ fi
     || { err "/etc/systemd/system/oom-watch.service missing"; exit 1; }
 ok "post-install paths verified: binary, config, unit"
 
+# Validate the INSTALLED config before we ask systemd to start the unit.
+# Anti-bluff: this turns a cryptic 'systemctl status: exit-code=2' into
+# the precise config error from oomwatch's validator, with remediation.
+hdr "2b. Validate /etc/oom-watch/config.json"
+if ! /usr/local/sbin/oomwatch -config /etc/oom-watch/config.json -dry-run \
+        >/tmp/.oomwatch-dryrun.$$ 2>&1; then
+    err "INSTALLED CONFIG IS INVALID — systemd start would fail with exit code 2."
+    err "Validator output:"
+    sed 's/^/    /' /tmp/.oomwatch-dryrun.$$ >&2
+    rm -f /tmp/.oomwatch-dryrun.$$
+    err "Remediation:"
+    err "  - Edit /etc/oom-watch/config.json to fix the reported issue, OR"
+    err "  - Remove it ('rm /etc/oom-watch/config.json') and re-run this script"
+    err "    so the current example is copied in fresh."
+    exit 1
+fi
+rm -f /tmp/.oomwatch-dryrun.$$
+ok "/etc/oom-watch/config.json passes -dry-run"
+
 # ---- enable + start ---------------------------------------------------
 hdr "3. Enable + start oom-watch.service"
 systemctl daemon-reload

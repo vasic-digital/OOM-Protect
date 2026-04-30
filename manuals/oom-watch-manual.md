@@ -54,12 +54,22 @@ go test -count=1 ./...
 
 ## Install
 
+The recommended path is the one-shot installer + verifier:
+
+```bash
+sudo make oomwatch-deploy        # or, when already root: make oomwatch-deploy
+```
+
+This wraps `oomwatch-install` with: `daemon-reload`, `enable`, `restart`, a 30 s `is-active` poll, a journal check that `"atop located"` appears (proves the daemon reached its sample loop), a 60 s wait for the first report, and a forced `-one-shot` if the host is calm enough that no threshold trips. **It validates `/etc/oom-watch/config.json` with `-dry-run` BEFORE asking systemd to start the unit**, so a bad config produces the precise validator error rather than a cryptic `systemctl status: exit-code=2`. On any failure the script's EXIT trap dumps `systemctl status`, the last 50 journal lines, the config and unit files, and a listing of the report directory.
+
+If you prefer the legacy two-step procedure:
+
 ```bash
 sudo make oomwatch-install
 sudo systemctl enable --now oom-watch.service
 ```
 
-This places:
+`oomwatch-install` (and therefore `oomwatch-deploy`) places:
 
 - `/usr/local/sbin/oomwatch`
 - `/etc/oom-watch/config.json` (from `oom-watch/config/oom-watch.example.json`, only if not already present)
@@ -203,6 +213,7 @@ The parser preserves all PRM rows (leader and non-leader) in `Sample.PRM` so fut
 | Symptom | Cause | Fix |
 |---|---|---|
 | daemon exits 1 with `atop binary not found` | atop not installed | install atop on the host |
+| systemd unit cycles `activating → failed`, `systemctl status` shows `code=exited, status=2` | invalid `/etc/oom-watch/config.json` (unknown field, bad threshold ordering, etc.) | `oomwatch -config /etc/oom-watch/config.json -dry-run` prints the precise error. Fix the file or `rm` it and re-run `make oomwatch-deploy` to copy the current example. |
 | daemon starts, no reports ever | thresholds set too high; or atop returns degenerate samples (zero processes) | run `oomwatch -one-shot` to verify the pipeline; check `journalctl -u oom-watch` |
 | reports missing /proc/pressure section | host kernel < 5.15 | upgrade kernel; reports remain useful without PSI |
 | `Capture errors` lists `cgroup dir empty` | running the daemon as a non-root user, or cgroup v1 host | run as root via the systemd unit; for cgroup v1, the section is just empty |
