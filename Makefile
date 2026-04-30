@@ -15,6 +15,12 @@
 SHELL := /bin/bash
 ROOT  := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
 
+# Privilege escalation. Empty when already root (e.g. invoked under `su -`),
+# otherwise `sudo`. Solves the ALT-Linux quirk where `root is not in
+# sudoers` and unnecessary sudo prefix breaks. Override on the command line
+# if you have a custom helper: `make install SUDO="doas"`.
+SUDO := $(shell test "$$(id -u)" = "0" && echo "" || echo "sudo")
+
 HARDEN  := $(ROOT)/oom-hardening.sh
 RUNNER  := $(ROOT)/oom-runner.sh
 BUILD   := $(ROOT)/build-docs.sh
@@ -94,17 +100,17 @@ dry-run:
 
 install:
 	@printf "$(B)Applying hardening (will prompt for sudo and confirmation).$(C)\n"
-	@sudo bash "$(HARDEN)"
+	@$(SUDO) bash "$(HARDEN)"
 
 uninstall:
-	@sudo bash "$(HARDEN)" --uninstall
+	@$(SUDO) bash "$(HARDEN)" --uninstall
 
 rollback:
 	@if [ -z "$(BACKUP)" ]; then \
 	    echo "Usage: make rollback BACKUP=/root/oom-hardening-backup-YYYYMMDD-HHMMSS"; \
 	    exit 1; \
 	fi
-	@sudo bash "$(HARDEN)" --rollback "$(BACKUP)"
+	@$(SUDO) bash "$(HARDEN)" --rollback "$(BACKUP)"
 
 verify:
 	@bash "$(VERIFY)"
@@ -220,18 +226,18 @@ challenges: oomwatch-build oommemhog-build
 	@bash $(CHALLENGES)
 
 oomwatch-install: $(OOMWATCH_BIN)
-	@printf "$(B)Installing oomwatch (will prompt for sudo).$(C)\n"
-	@sudo install -m 0755 -D $(OOMWATCH_BIN) /usr/local/sbin/oomwatch
-	@sudo install -d -m 0755 /etc/oom-watch /var/log/oom-watch /var/lib/oom-watch
+	@printf "$(B)Installing oomwatch...$(C)\n"
+	@$(SUDO) install -m 0755 -D $(OOMWATCH_BIN) /usr/local/sbin/oomwatch
+	@$(SUDO) install -d -m 0755 /etc/oom-watch /var/log/oom-watch /var/lib/oom-watch
 	@if [ ! -f /etc/oom-watch/config.json ]; then \
-	    sudo install -m 0644 $(OOMWATCH_DIR)/config/oom-watch.example.json /etc/oom-watch/config.json; \
+	    $(SUDO) install -m 0644 $(OOMWATCH_DIR)/config/oom-watch.example.json /etc/oom-watch/config.json; \
 	    printf "$(G)installed:$(C) /etc/oom-watch/config.json (from example)\n"; \
 	else \
 	    printf "$(Y)skipped:$(C) /etc/oom-watch/config.json already present\n"; \
 	fi
-	@sudo install -m 0644 $(OOMWATCH_DIR)/systemd/oom-watch.service /etc/systemd/system/oom-watch.service
-	@sudo systemctl daemon-reload
-	@printf "$(G)installed.$(C) Enable with: sudo systemctl enable --now oom-watch.service\n"
+	@$(SUDO) install -m 0644 $(OOMWATCH_DIR)/systemd/oom-watch.service /etc/systemd/system/oom-watch.service
+	@$(SUDO) systemctl daemon-reload
+	@printf "$(G)installed.$(C) Enable with: $(SUDO) systemctl enable --now oom-watch.service\n"
 
 oomwatch-clean:
 	@rm -f $(OOMWATCH_BIN) $(OOMWATCH_DIR)/oommemhog
