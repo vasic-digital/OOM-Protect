@@ -212,6 +212,9 @@ an <code>OnIncident</code> callback instead of monitor importing
 snapshot</a></li>
 <li><a href="#why-filter-prm-at-the-display-layer-instead-of-the-parser" id="toc-why-filter-prm-at-the-display-layer-instead-of-the-parser">Why
 filter PRM at the display layer instead of the parser</a></li>
+<li><a href="#why-forensic-enrichment-runs-at-snapshot-time-not-at-report-read-time" id="toc-why-forensic-enrichment-runs-at-snapshot-time-not-at-report-read-time">Why
+forensic enrichment runs at snapshot time, not at report-read
+time</a></li>
 <li><a href="#why-install-validates-with--dry-run-before-enabling-the-unit" id="toc-why-install-validates-with--dry-run-before-enabling-the-unit">Why
 install validates with <code>-dry-run</code> BEFORE enabling the
 unit</a></li>
@@ -353,6 +356,39 @@ ones — a parser-time filter would silently drop everything.</li>
 drops non-leaders before they reach the report.
 <code>challenge-real-atop.sh</code> asserts no PID appears more than
 once in the top-mem table when running real atop on the host.</p>
+</section>
+<section id="why-forensic-enrichment-runs-at-snapshot-time-not-at-report-read-time" class="level3">
+<h3>Why forensic enrichment runs at snapshot time, not at report-read
+time</h3>
+<p>atop’s PRM label gives a 15-character truncated command name and no
+context — for root-cause work an operator needs the full
+<code>/proc/&lt;pid&gt;/cmdline</code>, parent PID, owning UID, cgroup
+path, peak RSS, and <code>oom_score</code>. There are two places this
+enrichment could live:</p>
+<ol type="1">
+<li><strong>At report-read time</strong> — the daemon writes only the
+basics; an operator runs a separate tool to enrich a saved report.</li>
+<li><strong>At snapshot time</strong> — the daemon reads
+<code>/proc/&lt;pid&gt;/*</code> for the top-N PIDs as part of
+<code>Capture()</code> and stores the enriched detail in the
+report.</li>
+</ol>
+<p>We chose (2). Two reasons:</p>
+<ul>
+<li><strong>The PID may not exist later.</strong>
+<code>/proc/&lt;pid&gt;/cmdline</code> only exists while the process is
+running. By the time an operator reads the report 30 minutes later, the
+runaway may already have been OOM-killed or restarted with a new PID,
+and the cmdline is gone forever. The whole point of a forensic report is
+preserving evidence at the moment it matters.</li>
+<li><strong>No external tool to maintain.</strong> A read-time enricher
+would be a separate binary that drifts out of sync with the report
+format.</li>
+</ul>
+<p>The cost is bounded: enrichment caps at <code>EnrichTopN=10</code>
+PIDs by default, each requiring 4–5 small <code>/proc</code> reads (a
+few hundred microseconds total). On a host with 2000+ processes, that’s
+negligible compared to the atop sampling itself.</p>
 </section>
 <section id="why-install-validates-with--dry-run-before-enabling-the-unit" class="level3">
 <h3>Why install validates with <code>-dry-run</code> BEFORE enabling the

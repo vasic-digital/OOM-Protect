@@ -200,5 +200,52 @@ incident_lines=$(grep -c "incident report written" "$log_file" 2>/dev/null || tr
 chal_assert "[[ $incident_lines -ge 1 ]]" \
     "daemon log shows at least one 'incident report written' entry (got $incident_lines)"
 
+# (6) Forensic detail is captured per-PID. The "Top processes — full forensic
+# detail" section MUST be present and MUST contain the unique label we passed
+# to oommemhog.
+#
+# IMPORTANT — these assertions DO NOT use chal_assert. Reason: chal_assert's
+# argument is a shell expression that gets re-evaluated via eval, AND the
+# caller's outer double-quotes expand backticks inside the captured report
+# content. The forensic section renders a "Parent cmdline" field as
+# `bash /.../challenge-real-pressure.sh` (markdown inline code). When that
+# string is fed through `chal_assert "[[ -n \"$forensic\" ]]"`, bash treats
+# the markdown backticks as command substitution and re-runs THIS script —
+# producing an exponential cascade of re-invocations. We avoid the issue by
+# testing $forensic with direct `[[ ]]` and grepping via stdin (no
+# re-expansion), which never goes through eval.
+forensic_file="$sandbox/forensic-section.txt"
+sed -n '/## Top processes — full forensic detail/,/## Kernel OOM events/p' "$report" >"$forensic_file"
+
+if [[ -s "$forensic_file" ]]; then
+    chal_ok "report contains '## Top processes — full forensic detail' section"
+else
+    chal_fail "report missing '## Top processes — full forensic detail' section"
+fi
+
+if grep -qE "Full command line:" "$forensic_file"; then
+    chal_ok "forensic section has at least one 'Full command line:' block"
+else
+    chal_fail "forensic section missing 'Full command line:' subsection"
+fi
+
+# (7) The unique oommemhog label is present in the forensic argv (not just
+# in the truncated atop top-mem table). Proves the /proc/<pid>/cmdline
+# enrichment worked.
+if grep -qF -- "$unique_label" "$forensic_file"; then
+    chal_ok "forensic section contains the unique oommemhog label '$unique_label' in full argv"
+else
+    head_excerpt=$(head -40 "$forensic_file")
+    chal_fail "forensic section missing oommemhog's unique label '$unique_label'; argv enrichment may be broken. Excerpt:
+$head_excerpt"
+fi
+
+# (8) The PPID line is rendered (proves the /proc/<pid>/status parse landed).
+if grep -qE "^\| PPID \|" "$forensic_file"; then
+    chal_ok "forensic section renders a PPID row (proves /proc/<pid>/status parse)"
+else
+    chal_fail "forensic section missing PPID row"
+fi
+
 bytes=$(wc -c < "$report")
-chal_summary "verified: real memory pressure (target ${target_kb} KiB) produced report $(basename "$report") (${bytes}B) with severity $sev, contains 'oommemhog' in top-mem, MemAvailable dropped from $avail_kb_before to $mem_avail_in_report kB"
+chal_summary "verified: real memory pressure (target ${target_kb} KiB) produced report $(basename "$report") (${bytes}B) with severity $sev, contains 'oommemhog' in top-mem AND its full unique-label argv in the forensic-detail section, PPID row present, MemAvailable dropped from $avail_kb_before to $mem_avail_in_report kB"

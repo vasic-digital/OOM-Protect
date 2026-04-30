@@ -352,14 +352,29 @@ victim list.</p>
 <p><strong>One-command diagnosis.</strong></p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-t</span> /var/log/oom-watch/reports/<span class="pp">*</span>-critical.md <span class="dv">2</span><span class="op">&gt;</span>/dev/null <span class="kw">|</span> <span class="fu">head</span> <span class="at">-1</span> <span class="kw">|</span> <span class="fu">xargs</span> less</span></code></pre></div>
 <p>The most recent CRITICAL report — written <strong>before</strong> the
-cascade — contains the top processes, <code>/proc/meminfo</code>, PSI
-scores, swap state, user-slice cgroup memory, and a 200-line journal
-tail. That is the forensic ground truth.</p>
+cascade — contains:</p>
+<ul>
+<li>The top processes by RSize.</li>
+<li><strong>Top processes — full forensic detail</strong> — for each
+top-mem PID, the full <code>/proc/&lt;pid&gt;/cmdline</code> (actual
+argv), PPID, UID, peak RSS (<code>VmHWM</code>), kernel
+<code>oom_score</code>, cgroup path, and the <strong>parent process’s
+command line</strong>. Read this section first — it answers “which exact
+process / script caused the cascade?” without guessing from atop’s
+truncated cmd names.</li>
+<li>Kernel OOM-killer events (filtered dmesg) — proves whether the
+kernel killed anything before the user-manager went down.</li>
+<li><code>/proc/meminfo</code>, PSI scores, swap state, user-slice
+cgroup memory.</li>
+<li>A 200-line journal tail.</li>
+</ul>
+<p>That is the forensic ground truth.</p>
 <p><strong>Remediation.</strong></p>
 <ol type="1">
-<li>Read the CRITICAL report. Identify the top-mem process: usually one
-runaway (browser tab leak, JVM heap overrun, build farm, model training,
-etc.).</li>
+<li>Read the CRITICAL report. Use the <strong>forensic-detail section
+(§6)</strong> to identify the runaway by its full argv and cgroup path —
+not just by the truncated atop name. Look at the parent cmdline to spot
+“started by /tmp/build.sh” / “forked by IntelliJ” patterns.</li>
 <li>Run <code>make verify</code> to confirm the umbrella (oomd + cgroup
 limits + sysctls from <code>oom-hardening.sh</code>) is still
 applied.</li>

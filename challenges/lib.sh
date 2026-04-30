@@ -45,6 +45,22 @@ chal_require() {
 
 # chal_assert <bool-expression-as-string> <human-message>
 # Example: chal_assert "[[ -f $path ]]" "report file exists"
+#
+# DANGER: chal_assert's first argument is shell-expanded by the CALLER
+# before chal_assert sees it, then re-evaluated via eval here. Both layers
+# expand backticks ` ` and $(...). This is fine for tests against simple
+# variables (paths, integers, exit codes), but NEVER pass content captured
+# from external sources — markdown reports, journal lines, command output —
+# through chal_assert. A markdown report containing "`bash script.sh`" will
+# execute that script when the outer double-quotes expand the backticks.
+#
+# For content-bearing tests, use direct inline forms:
+#   if [[ -n "$captured_content" ]]; then chal_ok "..."; else chal_fail "..."; fi
+#   if grep -qF "$needle" "$file"; then chal_ok "..."; else chal_fail "..."; fi
+#
+# This caused a real fork-bomb-class bug in challenge-real-pressure.sh on
+# 2026-04-30 — see that script's "(6) Forensic detail" section for the
+# postmortem comment.
 chal_assert() {
     local expr="$1" msg="$2"
     if eval "$expr"; then
@@ -52,6 +68,32 @@ chal_assert() {
     else
         chal_fail "assertion failed: $msg ($expr)"
     fi
+}
+
+# chal_assert_var <variable-name> <bool-test> <human-message>
+# Indirect-expansion form for content-bearing assertions. The variable name
+# is expanded via ${!name} INSIDE this function, so backticks in the value
+# are never re-evaluated by the caller's outer quoting.
+#
+# Supported tests: nonempty, empty.
+#
+# Example:
+#   forensic=$(sed -n '/## …/,/## …/p' "$report")
+#   chal_assert_var forensic nonempty "report has forensic section"
+chal_assert_var() {
+    local varname="$1" test="$2" msg="$3"
+    local value="${!varname}"
+    case "$test" in
+        nonempty)
+            if [[ -n "$value" ]]; then chal_ok "$msg"; else chal_fail "$msg"; fi
+            ;;
+        empty)
+            if [[ -z "$value" ]]; then chal_ok "$msg"; else chal_fail "$msg (value: ${value:0:200})"; fi
+            ;;
+        *)
+            chal_fail "chal_assert_var: unknown test '$test' (use 'nonempty' or 'empty')"
+            ;;
+    esac
 }
 
 chal_assert_file_contains() {

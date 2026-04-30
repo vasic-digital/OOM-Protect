@@ -100,6 +100,20 @@ func writeReport(w io.Writer, snap *snapshot.Snapshot) error {
 	bw.printf("## Top processes by CPU (per atop)\n\n")
 	writeProcessTable(bw, snap.TopByCPU, snap.Sample)
 
+	// Forensic detail per top-mem PID — the most actionable section.
+	// Tells the operator exactly which binary, with which arguments,
+	// running as which user, in which cgroup, started by which parent.
+	bw.printf("## Top processes — full forensic detail\n\n")
+	writeProcessDetails(bw, snap.TopByMemoryDetail)
+
+	// Kernel OOM events (separate from systemd-oomd which lives in journal)
+	bw.printf("## Kernel OOM events (filtered dmesg)\n\n")
+	if snap.KernelOOMTail == "" {
+		bw.printf("_No kernel OOM-killer activity captured. (Empty is the goal — if the kernel OOM-killer fires, the lines appear here.)_\n\n")
+	} else {
+		bw.printf("```\n%s\n```\n\n", trimRight(snap.KernelOOMTail))
+	}
+
 	// /proc snapshots
 	bw.printf("## /proc/meminfo\n\n```\n%s\n```\n\n", trimRight(snap.MemInfo))
 	bw.printf("## /proc/loadavg\n\n```\n%s\n```\n\n", trimRight(snap.LoadAvg))
@@ -156,6 +170,53 @@ func writeSampleSummary(bw *errWriter, s *atop.Sample) {
 			s.CPL.Load1/float64(maxInt64(s.CPL.NumCPU, 1)))
 	}
 	bw.printf("\n")
+}
+
+// writeProcessDetails renders one Markdown subsection per top-mem PID with
+// every forensic field captured by snapshot.enrichProcess. The intent is
+// that when an operator opens this report two days later, this section
+// alone is enough to identify exactly which process caused the incident.
+func writeProcessDetails(bw *errWriter, ds []snapshot.ProcessDetail) {
+	if len(ds) == 0 {
+		bw.printf("_No forensic detail captured (atop sample had no processes, or /proc enrichment was disabled)._\n\n")
+		return
+	}
+	for i, d := range ds {
+		title := "missing process"
+		if len(d.Cmdline) > 0 {
+			title = d.Cmdline[0]
+		}
+		bw.printf("### #%d: PID %d — `%s`\n\n", i+1, d.PID, escapeBackticks(title))
+		if d.PID == 0 {
+			bw.printf("_Process exited between top-N selection and detail capture. No /proc data available._\n\n")
+			continue
+		}
+		// Full argv — the most useful single field. Print on its own line in
+		// a code block to preserve quoting / spaces.
+		bw.printf("**Full command line:**\n\n```\n%s\n```\n\n", strings.Join(d.Cmdline, " "))
+		// Compact summary table.
+		bw.printf("| Field | Value |\n|---|---|\n")
+		bw.printf("| PID | %d |\n", d.PID)
+		bw.printf("| PPID | %d |\n", d.PPID)
+		bw.printf("| UID | %d |\n", d.UID)
+		bw.printf("| State | %s |\n", d.State)
+		bw.printf("| VmRSS (current resident) | %d kB |\n", d.VmRSSKB)
+		bw.printf("| VmHWM (peak resident) | %d kB |\n", d.VmHWMKB)
+		bw.printf("| VmPeak (peak virtual) | %d kB |\n", d.VmPeakKB)
+		bw.printf("| oom_score (kernel badness) | %d |\n", d.OomScore)
+		bw.printf("| oom_score_adj (operator override) | %d |\n", d.OomScoreAdj)
+		if d.Cgroup != "" {
+			bw.printf("| cgroup | `%s` |\n", escapeBackticks(d.Cgroup))
+		}
+		if d.ParentCmd != "" {
+			bw.printf("| Parent (PID %d) cmdline | `%s` |\n", d.PPID, escapeBackticks(d.ParentCmd))
+		}
+		bw.printf("\n")
+	}
+}
+
+func escapeBackticks(s string) string {
+	return strings.ReplaceAll(s, "`", "'")
 }
 
 func writeProcessTable(bw *errWriter, ps []snapshot.ProcessLine, s *atop.Sample) {

@@ -78,6 +78,20 @@ atop 2.x emits one PRM row per kernel thread; non-leader rows duplicate the pare
 
 Tests: `TestParse_RealFixture` asserts `IsLeader` is decoded correctly for `y`, `n`, and old-style (no flag) rows. `TestTopProcesses_FiltersNonLeaders` asserts the snapshot drops non-leaders before they reach the report. `challenge-real-atop.sh` asserts no PID appears more than once in the top-mem table when running real atop on the host.
 
+### Why forensic enrichment runs at snapshot time, not at report-read time
+
+atop's PRM label gives a 15-character truncated command name and no context — for root-cause work an operator needs the full `/proc/<pid>/cmdline`, parent PID, owning UID, cgroup path, peak RSS, and `oom_score`. There are two places this enrichment could live:
+
+1. **At report-read time** — the daemon writes only the basics; an operator runs a separate tool to enrich a saved report.
+2. **At snapshot time** — the daemon reads `/proc/<pid>/*` for the top-N PIDs as part of `Capture()` and stores the enriched detail in the report.
+
+We chose (2). Two reasons:
+
+- **The PID may not exist later.** `/proc/<pid>/cmdline` only exists while the process is running. By the time an operator reads the report 30 minutes later, the runaway may already have been OOM-killed or restarted with a new PID, and the cmdline is gone forever. The whole point of a forensic report is preserving evidence at the moment it matters.
+- **No external tool to maintain.** A read-time enricher would be a separate binary that drifts out of sync with the report format.
+
+The cost is bounded: enrichment caps at `EnrichTopN=10` PIDs by default, each requiring 4–5 small `/proc` reads (a few hundred microseconds total). On a host with 2000+ processes, that's negligible compared to the atop sampling itself.
+
 ### Why install validates with `-dry-run` BEFORE enabling the unit
 
 A subtle bluff hit us once: the shipped `oom-watch.example.json` carried a `_comment` JSON field for self-documentation, but `config.Load` uses `DisallowUnknownFields()` to reject typos. The example was thus a config the parser refused. `make oomwatch-install` copied it verbatim to `/etc/oom-watch/config.json`, and the systemd unit cycled `activating → failed` with `exit-code=2` — accurate, but useless to the operator who didn't know which exit code maps to which failure class.

@@ -269,7 +269,11 @@ testing</a></li>
 <li><a href="#severity-ladder-and-cooldown" id="toc-severity-ladder-and-cooldown">Severity ladder and
 cooldown</a></li>
 <li><a href="#anatomy-of-a-report" id="toc-anatomy-of-a-report">Anatomy
-of a report</a></li>
+of a report</a>
+<ul>
+<li><a href="#why-6-forensic-detail-matters" id="toc-why-6-forensic-detail-matters">Why §6 forensic detail
+matters</a></li>
+</ul></li>
 <li><a href="#operational-tasks" id="toc-operational-tasks">Operational
 tasks</a></li>
 <li><a href="#real-pressure-validation-challenge-harness" id="toc-real-pressure-validation-challenge-harness">Real-pressure
@@ -588,6 +592,21 @@ SWP, PSI, CPL.</li>
 <li><strong>Top processes by resident memory</strong> — with PID, cmd,
 RSize converted to GiB/MiB.</li>
 <li><strong>Top processes by CPU</strong> — from atop’s PRC label.</li>
+<li><strong>Top processes — full forensic detail</strong> — for each of
+the top N memory PIDs (default 10), one subsection containing the full
+<code>/proc/&lt;pid&gt;/cmdline</code> (the actual argv, not atop’s
+truncated 15-character cmd name), PPID, UID, State, current and peak
+RSS, peak virtual size, kernel <code>oom_score</code>, operator-set
+<code>oom_score_adj</code>, cgroup membership, and <strong>the parent
+process’s command line</strong> (so a script that forked the runaway is
+identified). This is the section that answers “which process actually
+caused the incident, owned by whom, started by what”.</li>
+<li><strong>Kernel OOM events (filtered dmesg)</strong> — lines from the
+kernel ring buffer matching <code>Out of memory</code>,
+<code>oom-killer</code>, <code>Killed process</code>,
+<code>Memory cgroup out of memory</code>, or <code>oom_reaper</code>.
+Empty in normal operation; populated when the kernel itself terminated
+something.</li>
 <li><strong>/proc/meminfo, /proc/loadavg,
 /proc/pressure/{memory,cpu,io}</strong> — verbatim.</li>
 <li><strong>User-slice cgroup</strong> — <code>memory.current</code>,
@@ -600,6 +619,27 @@ named.</li>
 </ol>
 <p>Reports are atomically written (temp + rename), so a partial file is
 never observable.</p>
+<section id="why-6-forensic-detail-matters" class="level3">
+<h3>Why §6 forensic detail matters</h3>
+<p>atop’s PRM line gives only a truncated command name (~15 characters,
+often only the basename) and no parent / cgroup / user / argv context.
+For root-cause work — “which one of the five <code>claude</code>
+instances on this host actually went runaway, and what was it asked to
+do?” — that is not enough. The forensic-detail section reads
+<code>/proc/&lt;pid&gt;/cmdline</code>,
+<code>/proc/&lt;pid&gt;/status</code>,
+<code>/proc/&lt;pid&gt;/cgroup</code>,
+<code>/proc/&lt;pid&gt;/oom_score{,_adj}</code>, and the parent’s
+<code>cmdline</code>, then renders one subsection per top-mem PID with
+every field labelled. An operator opening the report two days after an
+incident gets the full forensic picture from this section alone.</p>
+<p>Best-effort: a process that exits between top-N selection and detail
+capture leaves a benign placeholder (“<em>Process exited between top-N
+selection and detail capture</em>”) rather than aborting the report. The
+number of PIDs enriched is bounded by <code>EnrichTopN</code> (default
+10) so the wall-clock cost of enrichment is small even on hosts with
+thousands of processes.</p>
+</section>
 </section>
 <section id="operational-tasks" class="level2">
 <h2>Operational tasks</h2>

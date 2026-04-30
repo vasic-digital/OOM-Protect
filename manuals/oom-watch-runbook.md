@@ -56,11 +56,19 @@ For everything not listed, run `sudo make oomwatch-diagnose` and read the result
 ls -t /var/log/oom-watch/reports/*-critical.md 2>/dev/null | head -1 | xargs less
 ```
 
-The most recent CRITICAL report — written **before** the cascade — contains the top processes, `/proc/meminfo`, PSI scores, swap state, user-slice cgroup memory, and a 200-line journal tail. That is the forensic ground truth.
+The most recent CRITICAL report — written **before** the cascade — contains:
+
+- The top processes by RSize.
+- **Top processes — full forensic detail** — for each top-mem PID, the full `/proc/<pid>/cmdline` (actual argv), PPID, UID, peak RSS (`VmHWM`), kernel `oom_score`, cgroup path, and the **parent process's command line**. Read this section first — it answers "which exact process / script caused the cascade?" without guessing from atop's truncated cmd names.
+- Kernel OOM-killer events (filtered dmesg) — proves whether the kernel killed anything before the user-manager went down.
+- `/proc/meminfo`, PSI scores, swap state, user-slice cgroup memory.
+- A 200-line journal tail.
+
+That is the forensic ground truth.
 
 **Remediation.**
 
-1. Read the CRITICAL report. Identify the top-mem process: usually one runaway (browser tab leak, JVM heap overrun, build farm, model training, etc.).
+1. Read the CRITICAL report. Use the **forensic-detail section (§6)** to identify the runaway by its full argv and cgroup path — not just by the truncated atop name. Look at the parent cmdline to spot "started by /tmp/build.sh" / "forked by IntelliJ" patterns.
 2. Run `make verify` to confirm the umbrella (oomd + cgroup limits + sysctls from `oom-hardening.sh`) is still applied.
 3. Run `make verify-stress` (or the lighter `make oommemhog-build && bash challenges/challenge-real-pressure.sh`) to confirm pressure detection still fires WARN.
 4. If the runaway was a known wrappable workload, run it under `oom-runner.sh` going forward (e.g. `oom-runner --preset claude -- claude`). The per-leaf cgroup means the runaway dies in isolation.

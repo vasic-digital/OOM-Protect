@@ -143,12 +143,20 @@ Each `.md` report contains, in order:
 3. **Atop sample summary** — single-line summaries of MEM, SWP, PSI, CPL.
 4. **Top processes by resident memory** — with PID, cmd, RSize converted to GiB/MiB.
 5. **Top processes by CPU** — from atop's PRC label.
-6. **/proc/meminfo, /proc/loadavg, /proc/pressure/{memory,cpu,io}** — verbatim.
-7. **User-slice cgroup** — `memory.current`, `memory.max`, etc. from `/sys/fs/cgroup/user.slice/user-<uid>.slice/`.
-8. **Journal tail** — last ~200 lines of the system journal.
-9. **Capture errors** — anything we could not collect, named.
+6. **Top processes — full forensic detail** — for each of the top N memory PIDs (default 10), one subsection containing the full `/proc/<pid>/cmdline` (the actual argv, not atop's truncated 15-character cmd name), PPID, UID, State, current and peak RSS, peak virtual size, kernel `oom_score`, operator-set `oom_score_adj`, cgroup membership, and **the parent process's command line** (so a script that forked the runaway is identified). This is the section that answers "which process actually caused the incident, owned by whom, started by what".
+7. **Kernel OOM events (filtered dmesg)** — lines from the kernel ring buffer matching `Out of memory`, `oom-killer`, `Killed process`, `Memory cgroup out of memory`, or `oom_reaper`. Empty in normal operation; populated when the kernel itself terminated something.
+8. **/proc/meminfo, /proc/loadavg, /proc/pressure/{memory,cpu,io}** — verbatim.
+9. **User-slice cgroup** — `memory.current`, `memory.max`, etc. from `/sys/fs/cgroup/user.slice/user-<uid>.slice/`.
+10. **Journal tail** — last ~200 lines of the system journal.
+11. **Capture errors** — anything we could not collect, named.
 
 Reports are atomically written (temp + rename), so a partial file is never observable.
+
+### Why §6 forensic detail matters
+
+atop's PRM line gives only a truncated command name (~15 characters, often only the basename) and no parent / cgroup / user / argv context. For root-cause work — "which one of the five `claude` instances on this host actually went runaway, and what was it asked to do?" — that is not enough. The forensic-detail section reads `/proc/<pid>/cmdline`, `/proc/<pid>/status`, `/proc/<pid>/cgroup`, `/proc/<pid>/oom_score{,_adj}`, and the parent's `cmdline`, then renders one subsection per top-mem PID with every field labelled. An operator opening the report two days after an incident gets the full forensic picture from this section alone.
+
+Best-effort: a process that exits between top-N selection and detail capture leaves a benign placeholder ("_Process exited between top-N selection and detail capture_") rather than aborting the report. The number of PIDs enriched is bounded by `EnrichTopN` (default 10) so the wall-clock cost of enrichment is small even on hosts with thousands of processes.
 
 ## Operational tasks
 

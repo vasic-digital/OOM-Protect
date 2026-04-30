@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -123,6 +124,144 @@ func TestTopProcesses_FiltersNonLeaders(t *testing.T) {
 	for _, m := range mem {
 		if m.PID == 9101 || m.PID == 9102 || m.PID == 9103 {
 			t.Errorf("non-leader PID %d leaked into top list: %+v", m.PID, m)
+		}
+	}
+}
+
+// TestEnrichProcess: builds a fake /proc/<pid>/ tree containing realistic
+// cmdline (NUL-separated), status (PPid, Uid, VmRSS, VmHWM, VmPeak), cgroup,
+// oom_score, oom_score_adj. Anti-bluff: every assertion targets a specific
+// field that would silently zero out under a parser regression.
+func TestEnrichProcess(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+
+	// Child process — the suspect.
+	mkProc(t, root, 5678, map[string]string{
+		"cmdline":       "/usr/local/bin/node\x00--max-old-space-size=8192\x00/srv/app/server.js\x00--port=3000\x00",
+		"status":        "Name:\tnode\nState:\tR (running)\nPPid:\t1234\nUid:\t1000\t1000\t1000\t1000\nVmPeak:\t12345 kB\nVmHWM:\t10000 kB\nVmRSS:\t9876 kB\n",
+		"cgroup":        "0::/user.slice/user-1000.slice/user@1000.service/app.slice/node.scope\n",
+		"oom_score":     "234\n",
+		"oom_score_adj": "0\n",
+	})
+	// Parent — the script that started it.
+	mkProc(t, root, 1234, map[string]string{
+		"cmdline": "/bin/bash\x00/home/me/scripts/start-server.sh\x00--env=prod\x00",
+	})
+
+	snap := &Snapshot{}
+	d := snap.enrichProcess(5678, root)
+
+	if d.PID != 5678 {
+		t.Errorf("PID = %d, want 5678", d.PID)
+	}
+	if len(d.Cmdline) != 4 {
+		t.Fatalf("Cmdline len = %d, want 4 (full argv); got %v", len(d.Cmdline), d.Cmdline)
+	}
+	if d.Cmdline[0] != "/usr/local/bin/node" || d.Cmdline[2] != "/srv/app/server.js" {
+		t.Errorf("Cmdline = %q, want full /usr/local/bin/node argv", d.Cmdline)
+	}
+	if d.PPID != 1234 {
+		t.Errorf("PPID = %d, want 1234", d.PPID)
+	}
+	if d.UID != 1000 {
+		t.Errorf("UID = %d, want 1000", d.UID)
+	}
+	if d.State != "R" {
+		t.Errorf("State = %q, want R", d.State)
+	}
+	if d.VmRSSKB != 9876 {
+		t.Errorf("VmRSSKB = %d, want 9876", d.VmRSSKB)
+	}
+	if d.VmHWMKB != 10000 {
+		t.Errorf("VmHWMKB = %d, want 10000", d.VmHWMKB)
+	}
+	if d.VmPeakKB != 12345 {
+		t.Errorf("VmPeakKB = %d, want 12345", d.VmPeakKB)
+	}
+	if d.OomScore != 234 {
+		t.Errorf("OomScore = %d, want 234", d.OomScore)
+	}
+	if d.OomScoreAdj != 0 {
+		t.Errorf("OomScoreAdj = %d, want 0", d.OomScoreAdj)
+	}
+	if d.Cgroup != "0::/user.slice/user-1000.slice/user@1000.service/app.slice/node.scope" {
+		t.Errorf("Cgroup = %q (unexpected)", d.Cgroup)
+	}
+	if d.ParentCmd == "" || !strings.Contains(d.ParentCmd, "start-server.sh") {
+		t.Errorf("ParentCmd = %q, want substring 'start-server.sh'", d.ParentCmd)
+	}
+}
+
+// TestEnrichProcess_MissingPid: a process that exits between top-N
+// selection and detail capture must produce a benign placeholder, not
+// crash the snapshot.
+func TestEnrichProcess_MissingPid(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir() // no /proc/<pid>/ entries
+	snap := &Snapshot{}
+	d := snap.enrichProcess(99999, root)
+	if d.PID != 0 {
+		t.Errorf("missing pid: expected PID=0, got %d", d.PID)
+	}
+	if d.Source != "<missing>" {
+		t.Errorf("missing pid: expected Source=<missing>, got %q", d.Source)
+	}
+	if len(snap.Errors) == 0 {
+		t.Error("expected snap.Errors to record the missing pid")
+	}
+}
+
+// TestCapture_EnrichesTopByMemory: end-to-end through Capture, asserting
+// the new TopByMemoryDetail is populated with the right number of entries
+// and contains the cmdline of a known fake PID. Anti-bluff: a regression
+// that disabled enrichment would leave TopByMemoryDetail empty.
+func TestCapture_EnrichesTopByMemory(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "loadavg"), []byte("0 0 0 0/0 0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mkProc(t, root, 7777, map[string]string{
+		"cmdline": "/opt/big-app\x00--config=/etc/big-app.yaml\x00",
+		"status":  "Name:\tbig-app\nState:\tS (sleeping)\nPPid:\t1\nUid:\t0\t0\t0\t0\nVmRSS:\t12000 kB\n",
+	})
+
+	sample := &atop.Sample{
+		PRM: []atop.PRM{
+			{PID: 7777, Cmd: "big-app", RSize: 3000, IsLeader: true},
+		},
+	}
+	snap := Capture(context.Background(), monitor.Verdict{}, sample, Options{
+		ProcRoot:    root,
+		SkipJournal: true,
+		SkipDmesg:   true,
+		TopN:        5,
+		EnrichTopN:  5,
+	})
+	if len(snap.TopByMemoryDetail) != 1 {
+		t.Fatalf("expected 1 enriched detail (PID 7777), got %d", len(snap.TopByMemoryDetail))
+	}
+	d := snap.TopByMemoryDetail[0]
+	if d.PID != 7777 || len(d.Cmdline) != 2 || d.Cmdline[1] != "--config=/etc/big-app.yaml" {
+		t.Errorf("enriched detail unexpected: %+v", d)
+	}
+	if d.VmRSSKB != 12000 {
+		t.Errorf("VmRSSKB = %d, want 12000 (from fake status)", d.VmRSSKB)
+	}
+}
+
+// mkProc writes a fake /proc/<pid>/ tree with the given file contents.
+// Used by TestEnrichProcess and TestCapture_EnrichesTopByMemory.
+func mkProc(t *testing.T, root string, pid int, files map[string]string) {
+	t.Helper()
+	dir := filepath.Join(root, fmt.Sprintf("%d", pid))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
 		}
 	}
 }
