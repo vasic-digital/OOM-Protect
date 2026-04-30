@@ -60,7 +60,9 @@ The recommended path is the one-shot installer + verifier:
 sudo make oomwatch-deploy        # or, when already root: make oomwatch-deploy
 ```
 
-This wraps `oomwatch-install` with: `daemon-reload`, `enable`, `restart`, a 30 s `is-active` poll, a journal check that `"atop located"` appears (proves the daemon reached its sample loop), a 60 s wait for the first report, and a forced `-one-shot` if the host is calm enough that no threshold trips. **It validates `/etc/oom-watch/config.json` with `-dry-run` BEFORE asking systemd to start the unit**, so a bad config produces the precise validator error rather than a cryptic `systemctl status: exit-code=2`. On any failure the script's EXIT trap dumps `systemctl status`, the last 50 journal lines, the config and unit files, and a listing of the report directory.
+For the full step-by-step description of every action the deployer takes, every assertion it makes, every flag it accepts, and every failure mode and its remediation, see **[`oom-watch-deployment-guide.md`](oom-watch-deployment-guide.md)** — that document is the single canonical reference for getting `oom-watch` running on a host.
+
+In short, `make oomwatch-deploy` wraps `oomwatch-install` with: `daemon-reload`, `enable`, `restart`, a 30 s `is-active` poll, a journal check that `"atop located"` appears (proves the daemon reached its sample loop), a 60 s wait for the first report, and a forced `-one-shot` if the host is calm enough that no threshold trips. **It validates `/etc/oom-watch/config.json` with `-dry-run` BEFORE asking systemd to start the unit**, so a bad config produces the precise validator error rather than a cryptic `systemctl status: exit-code=2`, and **auto-remediates a broken installed config** by backing it up to `/etc/oom-watch/config.json.broken.<timestamp>` and copying the shipped example into place. On any failure the script's EXIT trap dumps `systemctl status`, the last 50 journal lines, the config and unit files, and a listing of the report directory.
 
 If you prefer the legacy two-step procedure:
 

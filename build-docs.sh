@@ -164,6 +164,7 @@ for cand in \
     "$ROOT/manuals/oom-hardening-manual.md" \
     "$ROOT/manuals/oom-runner-manual.md" \
     "$ROOT/manuals/oom-watch-manual.md" \
+    "$ROOT/manuals/oom-watch-deployment-guide.md" \
     "$ROOT/reports/oom-watch-architecture.md" \
     "$ROOT/oom-watch/README.md"
 do

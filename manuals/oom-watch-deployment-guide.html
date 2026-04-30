@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="OOM-Protect maintainers" />
+  <meta name="dcterms.date" content="2026-04-30" />
+  <title>oom-watch — Deployment Guide</title>
+  <style>
+
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ background-color: #f8f8f8; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ef2929; } 
+code span.an { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.at { color: #204a87; } 
+code span.bn { color: #0000cf; } 
+code span.cf { color: #204a87; font-weight: bold; } 
+code span.ch { color: #4e9a06; } 
+code span.cn { color: #8f5902; } 
+code span.co { color: #8f5902; font-style: italic; } 
+code span.cv { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.do { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.dt { color: #204a87; } 
+code span.dv { color: #0000cf; } 
+code span.er { color: #a40000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #0000cf; } 
+code span.fu { color: #204a87; font-weight: bold; } 
+code span.im { } 
+code span.in { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.kw { color: #204a87; font-weight: bold; } 
+code span.op { color: #ce5c00; font-weight: bold; } 
+code span.ot { color: #8f5902; } 
+code span.pp { color: #8f5902; font-style: italic; } 
+code span.sc { color: #ce5c00; font-weight: bold; } 
+code span.ss { color: #4e9a06; } 
+code span.st { color: #4e9a06; } 
+code span.va { color: #000000; } 
+code span.vs { color: #4e9a06; } 
+code span.wa { color: #8f5902; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+@page {
+size: A4;
+margin: 22mm 18mm 22mm 18mm;
+@bottom-center {
+content: counter(page) " / " counter(pages);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+@top-right {
+content: string(doctitle);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+}
+html { font-size: 11pt; }
+body {
+font-family: "DejaVu Sans", "Liberation Sans", "Helvetica", sans-serif;
+line-height: 1.5;
+color: #1a1a1a;
+max-width: 920px;
+margin: 24px auto;
+padding: 0 18px 48px;
+background: #fff;
+hyphens: auto;
+}
+
+header.title-block {
+border-bottom: 2px solid #2b6cb0;
+padding-bottom: 12px;
+margin-bottom: 28px;
+}
+h1.title {
+font-size: 26pt;
+color: #1a365d;
+margin: 0 0 4px;
+string-set: doctitle content();
+}
+p.subtitle, p.author, p.date {
+margin: 2px 0;
+color: #555;
+font-size: 10.5pt;
+}
+
+h1, h2, h3, h4, h5, h6 {
+font-family: "DejaVu Sans", sans-serif;
+color: #1a365d;
+page-break-after: avoid;
+line-height: 1.25;
+}
+h1 { font-size: 20pt; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-top: 32px; }
+h2 { font-size: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-top: 26px; }
+h3 { font-size: 13pt; margin-top: 22px; color: #2c5282; }
+h4 { font-size: 11.5pt; margin-top: 18px; color: #2c5282; }
+
+p { margin: 0.6em 0; }
+ul, ol { margin: 0.6em 0 0.6em 22px; padding: 0; }
+li { margin: 4px 0; }
+
+code {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 0.92em;
+background: #f1f5f9;
+color: #1a202c;
+padding: 1px 5px;
+border-radius: 3px;
+border: 1px solid #e2e8f0;
+}
+
+pre {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 9.5pt;
+background: #1a202c;
+color: #f7fafc;
+padding: 12px 14px;
+border-radius: 6px;
+overflow-x: auto;
+page-break-inside: avoid;
+line-height: 1.45;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+pre code {
+background: transparent;
+color: inherit;
+border: none;
+padding: 0;
+font-size: inherit;
+}
+
+blockquote {
+margin: 0.8em 0;
+padding: 8px 14px;
+border-left: 4px solid #4299e1;
+background: #ebf8ff;
+color: #2a4365;
+border-radius: 0 4px 4px 0;
+}
+
+table {
+border-collapse: collapse;
+width: 100%;
+margin: 1em 0;
+font-size: 10pt;
+page-break-inside: avoid;
+}
+th, td {
+border: 1px solid #cbd5e0;
+padding: 6px 9px;
+text-align: left;
+vertical-align: top;
+}
+thead th {
+background: #2c5282;
+color: #fff;
+font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+
+a { color: #2b6cb0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+nav#TOC {
+background: #f7fafc;
+border: 1px solid #e2e8f0;
+border-radius: 6px;
+padding: 14px 22px 14px 14px;
+margin: 16px 0 28px;
+page-break-after: always;
+}
+nav#TOC > ul { list-style: none; margin-left: 6px; padding: 0; }
+nav#TOC ul ul { margin-left: 18px; }
+nav#TOC > h2 { margin-top: 0; border: none; font-size: 13pt; }
+nav#TOC li { margin: 3px 0; }
+
+hr {
+border: none;
+border-top: 1px solid #cbd5e0;
+margin: 24px 0;
+}
+
+blockquote.note { border-left-color: #38b2ac; background: #e6fffa; color: #234e52; }
+blockquote.warning { border-left-color: #ed8936; background: #fffaf0; color: #7b341e; }
+blockquote.danger { border-left-color: #e53e3e; background: #fff5f5; color: #742a2a; }
+blockquote.success { border-left-color: #38a169; background: #f0fff4; color: #22543d; }
+
+@media print {
+body { font-size: 10pt; max-width: none; margin: 0; padding: 0; }
+a { color: #1a365d; }
+pre { font-size: 8.8pt; }
+nav#TOC { page-break-after: always; }
+h1, h2 { page-break-before: auto; }
+h1 { page-break-before: always; }
+h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
+}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">oom-watch — Deployment Guide</h1>
+<p class="subtitle">One-shot install + verify for the OOM-Protect
+monitoring daemon</p>
+<p class="author">OOM-Protect maintainers</p>
+<p class="date">2026-04-30</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#oom-watch-deployment-guide" id="toc-oom-watch-deployment-guide">oom-watch — Deployment Guide</a>
+<ul>
+<li><a href="#the-one-command" id="toc-the-one-command">1. The one
+command</a></li>
+<li><a href="#prerequisites" id="toc-prerequisites">2.
+Prerequisites</a></li>
+<li><a href="#what-the-script-does-step-by-step" id="toc-what-the-script-does-step-by-step">3. What the script does, step
+by step</a>
+<ul>
+<li><a href="#optional---pull" id="toc-optional---pull">3.0 Optional
+<code>--pull</code></a></li>
+<li><a href="#pre-flight" id="toc-pre-flight">3.1 Pre-flight</a></li>
+<li><a href="#build-install" id="toc-build-install">3.2 Build +
+install</a></li>
+<li><a href="#a-post-install-path-checks" id="toc-a-post-install-path-checks">3.2a Post-install path
+checks</a></li>
+<li><a href="#b-validate-etcoom-watchconfig.json" id="toc-b-validate-etcoom-watchconfig.json">3.2b Validate
+<code>/etc/oom-watch/config.json</code></a></li>
+<li><a href="#daemon-reload-enable-restart" id="toc-daemon-reload-enable-restart">3.3 daemon-reload + enable +
+restart</a></li>
+<li><a href="#wait-for-active-state-timeout-30-s" id="toc-wait-for-active-state-timeout-30-s">3.4 Wait for
+<code>active</code> state (timeout 30 s)</a></li>
+<li><a href="#journal-sanity-check" id="toc-journal-sanity-check">3.5
+Journal sanity check</a></li>
+<li><a href="#wait-for-first-report-timeout-60-s" id="toc-wait-for-first-report-timeout-60-s">3.6 Wait for first report
+(timeout 60 s)</a></li>
+<li><a href="#summary" id="toc-summary">3.7 Summary</a></li>
+</ul></li>
+<li><a href="#flags" id="toc-flags">4. Flags</a></li>
+<li><a href="#exit-codes" id="toc-exit-codes">5. Exit codes</a></li>
+<li><a href="#idempotency-and-re-running" id="toc-idempotency-and-re-running">6. Idempotency and
+re-running</a></li>
+<li><a href="#failure-modes" id="toc-failure-modes">7. Failure
+modes</a></li>
+<li><a href="#reverse-and-uninstall" id="toc-reverse-and-uninstall">8.
+Reverse and uninstall</a></li>
+<li><a href="#after-deploy-live-operations" id="toc-after-deploy-live-operations">9. After deploy: live
+operations</a></li>
+<li><a href="#constitution-alignment-article-i" id="toc-constitution-alignment-article-i">10. Constitution alignment
+(Article I)</a></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
+</ul></li>
+</ul>
+</nav>
+<section id="oom-watch-deployment-guide" class="level1">
+<h1>oom-watch — Deployment Guide</h1>
+<p>This guide is the canonical, end-to-end procedure for getting
+<code>oom-watch</code> running on a host. It documents the deployer
+script (<code>oom-watch/scripts/install-and-verify.sh</code>) and the
+<code>make oomwatch-deploy</code> target that wraps it.</p>
+<p>If you are debugging a failed deployment, jump straight to <strong>§7
+Failure modes</strong> — every documented symptom maps to a specific
+assertion the script makes, and the EXIT trap dumps the corresponding
+diagnostic automatically.</p>
+<hr />
+<section id="the-one-command" class="level2">
+<h2>1. The one command</h2>
+<p>On a target host with the OOM-Protect repo checked out, atop
+installed, and Go ≥ 1.22 available:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-deploy</span></code></pre></div>
+<p>…or, when already root (e.g. logged in via <code>su -</code>):</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> oomwatch-deploy</span></code></pre></div>
+<p>That is the entirety of a fresh deploy. The Makefile target invokes
+<code>oom-watch/scripts/install-and-verify.sh</code>, which performs
+every step described below in order, asserts each one, and aborts with a
+full diagnostic dump if any check fails.</p>
+<p>If your repo is checked out somewhere other than the working
+directory, run the script directly:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> bash /path/to/OOM-Protect/oom-watch/scripts/install-and-verify.sh</span></code></pre></div>
+<hr />
+</section>
+<section id="prerequisites" class="level2">
+<h2>2. Prerequisites</h2>
+<p>The script will refuse to proceed unless every prerequisite is
+satisfied. There are no silent skips.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Prerequisite</th>
+<th>Why</th>
+<th>Install hint (ALT Linux)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Root or sudo</td>
+<td>Writes to <code>/usr/local/sbin</code>, <code>/etc/oom-watch</code>,
+<code>/etc/systemd/system</code>, <code>/var/log/oom-watch</code>,
+<code>/var/lib/oom-watch</code></td>
+<td><code>su -</code> or configure sudoers</td>
+</tr>
+<tr>
+<td><code>atop</code> on PATH</td>
+<td>The daemon’s only data source. Without atop the daemon refuses to
+start.</td>
+<td><code>apt-get install atop</code></td>
+</tr>
+<tr>
+<td><code>systemctl</code></td>
+<td>The unit is managed by systemd.</td>
+<td>included with systemd</td>
+</tr>
+<tr>
+<td>Go ≥ 1.22</td>
+<td>Only required if the <code>oom-watch/oomwatch</code> binary has not
+already been built.</td>
+<td><code>apt-get install golang</code></td>
+</tr>
+<tr>
+<td><code>make</code></td>
+<td>Drives the install target.</td>
+<td>usually pre-installed</td>
+</tr>
+</tbody>
+</table>
+<p>The script does <strong>not</strong> install atop or Go for you.
+Fixing prerequisites is intentionally a separate step from deployment so
+you can review what you’re installing.</p>
+<hr />
+</section>
+<section id="what-the-script-does-step-by-step" class="level2">
+<h2>3. What the script does, step by step</h2>
+<p>The script is <code>oom-watch/scripts/install-and-verify.sh</code>.
+Each numbered step here corresponds to a header section in the script’s
+stderr output.</p>
+<section id="optional---pull" class="level3">
+<h3>3.0 Optional <code>--pull</code></h3>
+<p>If invoked with <code>--pull</code>, runs
+<code>git pull --ff-only</code> in the repo so that the binary you
+build, the example config you install, and the unit file all come from
+current <code>main</code>. <strong>Off by default</strong> because
+pulling on a dirty tree may conflict; turn it on for fully-automated
+update-and-redeploy.</p>
+</section>
+<section id="pre-flight" class="level3">
+<h3>3.1 Pre-flight</h3>
+<ul>
+<li>Re-execs under sudo when not root (or fails loudly if sudo is
+missing on a non-root host).</li>
+<li>Verifies <code>atop</code> is on PATH and prints its version.</li>
+<li>Verifies <code>systemctl</code> is reachable.</li>
+</ul>
+</section>
+<section id="build-install" class="level3">
+<h3>3.2 Build + install</h3>
+<ul>
+<li>Builds <code>oom-watch/oomwatch</code> if missing (or always, with
+<code>--rebuild</code>). Skipped entirely with
+<code>--no-install</code>.</li>
+<li>Runs <code>make oomwatch-install</code>, which is itself idempotent:
+<ul>
+<li>copies the binary to <code>/usr/local/sbin/oomwatch</code></li>
+<li>creates <code>/etc/oom-watch/</code>,
+<code>/var/log/oom-watch/</code>, <code>/var/lib/oom-watch/</code></li>
+<li>copies <code>oom-watch/config/oom-watch.example.json</code> to
+<code>/etc/oom-watch/config.json</code> <strong>only if the file does
+not already exist</strong> (preserves customised configs)</li>
+<li>copies <code>oom-watch/systemd/oom-watch.service</code> to
+<code>/etc/systemd/system/</code></li>
+</ul></li>
+</ul>
+</section>
+<section id="a-post-install-path-checks" class="level3">
+<h3>3.2a Post-install path checks</h3>
+<p>Asserts every artefact landed where expected: binary executable,
+config file present, unit file present. Catches a regression in
+<code>make oomwatch-install</code> before any service ever tries to
+start.</p>
+</section>
+<section id="b-validate-etcoom-watchconfig.json" class="level3">
+<h3>3.2b Validate <code>/etc/oom-watch/config.json</code></h3>
+<p>Runs <code>oomwatch -dry-run</code> against the
+<strong>installed</strong> config. This is the anti-bluff guard against
+a class of bug where the daemon enters the systemd start path, fails
+configuration parsing, and dies at exit code 2 with no human-readable
+diagnostic.</p>
+<p>If validation fails, the script auto-remediates:</p>
+<ol type="1">
+<li>The broken file is moved aside to
+<code>/etc/oom-watch/config.json.broken.&lt;timestamp&gt;</code>.</li>
+<li>The shipped example is copied in as the new config.</li>
+<li>The new config is re-validated.</li>
+</ol>
+<p>If even the fresh example fails validation, the repository itself is
+broken and the script exits fatal. The backup path is printed; if you
+had custom thresholds, you can re-apply them by diffing the backup
+against the current file.</p>
+</section>
+<section id="daemon-reload-enable-restart" class="level3">
+<h3>3.3 daemon-reload + enable + restart</h3>
+<p>Reload the systemd manager configuration, enable the unit if not
+already enabled, and restart the unit. Restart (vs. start) gives the
+verifier a known starting state.</p>
+</section>
+<section id="wait-for-active-state-timeout-30-s" class="level3">
+<h3>3.4 Wait for <code>active</code> state (timeout 30 s)</h3>
+<p>Polls <code>systemctl is-active oom-watch.service</code> once per
+second:</p>
+<ul>
+<li><code>active</code> → proceed.</li>
+<li><code>failed</code> → exit 1 immediately (no point in waiting).</li>
+<li>anything else → keep polling.</li>
+</ul>
+<p>Times out at 30 s. The systemd unit is <code>Type=simple</code>, so
+it should reach <code>active</code> within milliseconds; staying in
+<code>activating</code> for 30 s indicates the binary is crashing on
+startup. The EXIT trap will then dump <code>systemctl status</code> and
+the journal so you can see why.</p>
+</section>
+<section id="journal-sanity-check" class="level3">
+<h3>3.5 Journal sanity check</h3>
+<p>Asserts
+<code>journalctl -u oom-watch.service --since &quot;2 minutes ago&quot;</code>
+contains the line <code>atop located</code>. The daemon prints this once
+it has resolved <code>atop</code> on its restricted (sandboxed) PATH. A
+daemon that bounced because the systemd hardening blocked something
+would otherwise show <code>active</code> but not have run; this check
+rules that out.</p>
+</section>
+<section id="wait-for-first-report-timeout-60-s" class="level3">
+<h3>3.6 Wait for first report (timeout 60 s)</h3>
+<p>Polls <code>/var/log/oom-watch/reports/</code> for any
+<code>.md</code> file. A genuinely calm host may not produce ANY
+automatic report — quiet IS the goal — so if the wait expires, the
+script forces a <code>-one-shot</code> diagnostic so we have proof on
+disk that the <em>report-writing</em> path also works.</p>
+</section>
+<section id="summary" class="level3">
+<h3>3.7 Summary</h3>
+<p>Prints unit state, binary mode and ownership, paths, and the latest
+report file name and size, plus the live-tail command so you know how to
+follow the daemon going forward.</p>
+<hr />
+</section>
+</section>
+<section id="flags" class="level2">
+<h2>4. Flags</h2>
+<pre><code>sudo bash oom-watch/scripts/install-and-verify.sh [FLAGS]</code></pre>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--pull</code></td>
+<td><code>git pull --ff-only</code> the repo before building. Off by
+default.</td>
+</tr>
+<tr>
+<td><code>--no-install</code></td>
+<td>Skip step 3.2 entirely. Use to verify a running unit after a manual
+restart.</td>
+</tr>
+<tr>
+<td><code>--rebuild</code></td>
+<td>Force a fresh <code>go build</code> even if the binary already
+exists.</td>
+</tr>
+<tr>
+<td><code>--quiet</code></td>
+<td>Suppress per-step OK / informational prints. Failure diagnostics are
+always printed.</td>
+</tr>
+<tr>
+<td><code>--help</code>, <code>-h</code></td>
+<td>Print the script’s header documentation and exit.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+</section>
+<section id="exit-codes" class="level2">
+<h2>5. Exit codes</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>Success. The daemon is installed, active, and producing
+reports.</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>Any pre-flight, install, validation, or runtime check failed. The
+EXIT trap will have dumped <code>systemctl status</code>, the last 50
+journal lines, the config file, the unit file, and a listing of the
+report directory.</td>
+</tr>
+<tr>
+<td><code>64</code></td>
+<td>Usage error (unknown flag).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+</section>
+<section id="idempotency-and-re-running" class="level2">
+<h2>6. Idempotency and re-running</h2>
+<p>The script is <strong>idempotent by design</strong>. Re-running on a
+host where <code>oom-watch</code> is already deployed is safe; it
+will:</p>
+<ul>
+<li>Skip the binary build if <code>oom-watch/oomwatch</code> is current
+(override with <code>--rebuild</code>).</li>
+<li>Skip <code>enable</code> if the unit is already enabled.</li>
+<li><strong>Always</strong> restart the unit (gives a clean starting
+state for verification).</li>
+<li><strong>Always</strong> re-validate the installed config and
+auto-remediate if broken.</li>
+</ul>
+<p>Re-running is also the recommended remediation when something has
+drifted on the host — it converges the host to the deployed state.</p>
+<hr />
+</section>
+<section id="failure-modes" class="level2">
+<h2>7. Failure modes</h2>
+<p>Every failure surfaces a specific error from the script (above the
+EXIT-trap diagnostic dump). The diagnostic dump always includes
+<code>systemctl status</code>, journal tail, config, unit file, and
+report directory listing.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Most likely cause</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>atop is not installed</code></td>
+<td>atop binary not on PATH</td>
+<td>Install atop, retry.</td>
+</tr>
+<tr>
+<td><code>systemctl not found</code></td>
+<td>Host is not systemd</td>
+<td>This script is systemd-only; for non-systemd hosts run
+<code>oomwatch -one-shot</code> from cron or your supervisor of
+choice.</td>
+</tr>
+<tr>
+<td><code>Go toolchain required to build oomwatch</code></td>
+<td>No prebuilt binary AND no Go on host</td>
+<td>Either install Go and retry, or copy a prebuilt
+<code>oom-watch/oomwatch</code> from another host.</td>
+</tr>
+<tr>
+<td><code>INSTALLED CONFIG IS INVALID</code></td>
+<td><code>/etc/oom-watch/config.json</code> fails
+<code>-dry-run</code></td>
+<td>The script auto-remediates: backs up to
+<code>config.json.broken.&lt;ts&gt;</code>, replaces with shipped
+example. If the validator output mentions an unknown field, the repo’s
+example may also be broken — file an issue.</td>
+</tr>
+<tr>
+<td><code>unit went to &#39;failed&#39; state</code></td>
+<td>The daemon process exits non-zero before the verifier polls</td>
+<td>The EXIT-trap dump shows the precise cause: usually a sandbox path
+the daemon needs is blocked, or the binary is built for a different
+architecture.</td>
+</tr>
+<tr>
+<td><code>unit did not reach &#39;active&#39; within 30 s</code></td>
+<td><code>Type=simple</code> daemon stuck <code>activating</code></td>
+<td>Same as above — read the dumped journal. Common cause:
+<code>Restart=on-failure</code> is bouncing because the binary is
+crashing immediately.</td>
+</tr>
+<tr>
+<td><code>journal does not contain &#39;atop located&#39;</code></td>
+<td>Daemon got past unit start but never reached the sample loop</td>
+<td>atop probably failed to spawn. Look at the dumped journal for
+atop-related errors.</td>
+</tr>
+<tr>
+<td><code>even -one-shot did not produce a report</code></td>
+<td>atop emits zero samples or report-dir is unwritable</td>
+<td>Check the report dir’s mode and the daemon’s <code>User=</code> in
+the unit file (default <code>root</code>).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+</section>
+<section id="reverse-and-uninstall" class="level2">
+<h2>8. Reverse and uninstall</h2>
+<p>There is no first-class uninstall yet (TODO). To manually
+uninstall:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl disable <span class="at">--now</span> oom-watch.service</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm /etc/systemd/system/oom-watch.service</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl daemon-reload</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm /usr/local/sbin/oomwatch</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm <span class="at">-rf</span> /etc/oom-watch /var/log/oom-watch /var/lib/oom-watch</span></code></pre></div>
+<p>Note: removing <code>/var/log/oom-watch</code> deletes any past
+forensic reports. If you want to keep them, move the directory aside
+first.</p>
+<hr />
+</section>
+<section id="after-deploy-live-operations" class="level2">
+<h2>9. After deploy: live operations</h2>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Tail the daemon log:</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">-fu</span> oom-watch.service</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># List recent reports:</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-lt</span> /var/log/oom-watch/reports/ <span class="kw">|</span> <span class="fu">head</span> <span class="at">-20</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Open the most recent report (any severity):</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-t</span> /var/log/oom-watch/reports/<span class="pp">*</span>.md <span class="kw">|</span> <span class="fu">head</span> <span class="at">-1</span> <span class="kw">|</span> <span class="fu">xargs</span> less</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Open the most recent CRITICAL:</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-t</span> /var/log/oom-watch/reports/<span class="pp">*</span>-critical.md <span class="dv">2</span><span class="op">&gt;</span>/dev/null <span class="kw">|</span> <span class="fu">head</span> <span class="at">-1</span> <span class="kw">|</span> <span class="fu">xargs</span> less</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Show effective config (defaults overlaid with the file):</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-print-config</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Force a diagnostic report right now:</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-one-shot</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Clean up old reports (cron candidate):</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> find /var/log/oom-watch/reports <span class="at">-name</span> <span class="st">&#39;*.md&#39;</span> <span class="at">-mtime</span> +30 <span class="at">-delete</span></span></code></pre></div>
+<hr />
+</section>
+<section id="constitution-alignment-article-i" class="level2">
+<h2>10. Constitution alignment (Article I)</h2>
+<p>This deployer is itself an anti-bluff artefact. Each numbered step
+asserts an observable outcome — file on disk, exit code, systemd unit
+state, journal substring, report file size — and exits non-zero on the
+first failed assertion. There are no <code>|| true</code>s, no
+<code>t.Skip</code>-equivalents, and no silent successes. The EXIT-trap
+diagnostic dump means a failure always surfaces enough context for the
+operator to act without re-running anything.</p>
+<p>The corresponding regression Challenge is
+<code>challenges/challenge-config-validation.sh</code>, which asserts
+the shipped <code>oom-watch.example.json</code> itself passes
+<code>-dry-run</code>. A future commit that re-introduces an unknown
+field in the example config would fail that Challenge, not your fresh
+install.</p>
+<hr />
+</section>
+<section id="see-also" class="level2">
+<h2>See also</h2>
+<ul>
+<li><code>manuals/oom-watch-manual.md</code> — full daemon documentation
+(config keys, severity ladder, threshold tuning, report anatomy).</li>
+<li><code>reports/oom-watch-architecture.md</code> — design decisions,
+including why the deployer validates with <code>-dry-run</code> before
+enabling.</li>
+<li><code>Constitution.md</code> — the project charter and Article I
+(anti-bluff testing).</li>
+</ul>
+</section>
+</section>
+</body>
+</html>

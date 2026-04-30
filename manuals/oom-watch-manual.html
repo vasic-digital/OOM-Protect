@@ -365,19 +365,27 @@ but oom-watch does not depend on those logs).</li>
 <h2>Install</h2>
 <p>The recommended path is the one-shot installer + verifier:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-deploy        <span class="co"># or, when already root: make oomwatch-deploy</span></span></code></pre></div>
-<p>This wraps <code>oomwatch-install</code> with:
-<code>daemon-reload</code>, <code>enable</code>, <code>restart</code>, a
-30 s <code>is-active</code> poll, a journal check that
-<code>&quot;atop located&quot;</code> appears (proves the daemon reached its
-sample loop), a 60 s wait for the first report, and a forced
-<code>-one-shot</code> if the host is calm enough that no threshold
-trips. <strong>It validates <code>/etc/oom-watch/config.json</code> with
-<code>-dry-run</code> BEFORE asking systemd to start the unit</strong>,
-so a bad config produces the precise validator error rather than a
-cryptic <code>systemctl status: exit-code=2</code>. On any failure the
-script’s EXIT trap dumps <code>systemctl status</code>, the last 50
-journal lines, the config and unit files, and a listing of the report
-directory.</p>
+<p>For the full step-by-step description of every action the deployer
+takes, every assertion it makes, every flag it accepts, and every
+failure mode and its remediation, see <strong><a href="oom-watch-deployment-guide.md"><code>oom-watch-deployment-guide.md</code></a></strong>
+— that document is the single canonical reference for getting
+<code>oom-watch</code> running on a host.</p>
+<p>In short, <code>make oomwatch-deploy</code> wraps
+<code>oomwatch-install</code> with: <code>daemon-reload</code>,
+<code>enable</code>, <code>restart</code>, a 30 s <code>is-active</code>
+poll, a journal check that <code>&quot;atop located&quot;</code> appears (proves
+the daemon reached its sample loop), a 60 s wait for the first report,
+and a forced <code>-one-shot</code> if the host is calm enough that no
+threshold trips. <strong>It validates
+<code>/etc/oom-watch/config.json</code> with <code>-dry-run</code>
+BEFORE asking systemd to start the unit</strong>, so a bad config
+produces the precise validator error rather than a cryptic
+<code>systemctl status: exit-code=2</code>, and <strong>auto-remediates
+a broken installed config</strong> by backing it up to
+<code>/etc/oom-watch/config.json.broken.&lt;timestamp&gt;</code> and
+copying the shipped example into place. On any failure the script’s EXIT
+trap dumps <code>systemctl status</code>, the last 50 journal lines, the
+config and unit files, and a listing of the report directory.</p>
 <p>If you prefer the legacy two-step procedure:</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-install</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl enable <span class="at">--now</span> oom-watch.service</span></code></pre></div>
