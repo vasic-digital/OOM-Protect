@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="OOM-Protect maintainers" />
+  <meta name="dcterms.date" content="2026-04-30" />
+  <title>oom-watch — Architecture and Design Decisions</title>
+  <style>
+
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+@page {
+size: A4;
+margin: 22mm 18mm 22mm 18mm;
+@bottom-center {
+content: counter(page) " / " counter(pages);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+@top-right {
+content: string(doctitle);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+}
+html { font-size: 11pt; }
+body {
+font-family: "DejaVu Sans", "Liberation Sans", "Helvetica", sans-serif;
+line-height: 1.5;
+color: #1a1a1a;
+max-width: 920px;
+margin: 24px auto;
+padding: 0 18px 48px;
+background: #fff;
+hyphens: auto;
+}
+
+header.title-block {
+border-bottom: 2px solid #2b6cb0;
+padding-bottom: 12px;
+margin-bottom: 28px;
+}
+h1.title {
+font-size: 26pt;
+color: #1a365d;
+margin: 0 0 4px;
+string-set: doctitle content();
+}
+p.subtitle, p.author, p.date {
+margin: 2px 0;
+color: #555;
+font-size: 10.5pt;
+}
+
+h1, h2, h3, h4, h5, h6 {
+font-family: "DejaVu Sans", sans-serif;
+color: #1a365d;
+page-break-after: avoid;
+line-height: 1.25;
+}
+h1 { font-size: 20pt; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-top: 32px; }
+h2 { font-size: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-top: 26px; }
+h3 { font-size: 13pt; margin-top: 22px; color: #2c5282; }
+h4 { font-size: 11.5pt; margin-top: 18px; color: #2c5282; }
+
+p { margin: 0.6em 0; }
+ul, ol { margin: 0.6em 0 0.6em 22px; padding: 0; }
+li { margin: 4px 0; }
+
+code {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 0.92em;
+background: #f1f5f9;
+color: #1a202c;
+padding: 1px 5px;
+border-radius: 3px;
+border: 1px solid #e2e8f0;
+}
+
+pre {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 9.5pt;
+background: #1a202c;
+color: #f7fafc;
+padding: 12px 14px;
+border-radius: 6px;
+overflow-x: auto;
+page-break-inside: avoid;
+line-height: 1.45;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+pre code {
+background: transparent;
+color: inherit;
+border: none;
+padding: 0;
+font-size: inherit;
+}
+
+blockquote {
+margin: 0.8em 0;
+padding: 8px 14px;
+border-left: 4px solid #4299e1;
+background: #ebf8ff;
+color: #2a4365;
+border-radius: 0 4px 4px 0;
+}
+
+table {
+border-collapse: collapse;
+width: 100%;
+margin: 1em 0;
+font-size: 10pt;
+page-break-inside: avoid;
+}
+th, td {
+border: 1px solid #cbd5e0;
+padding: 6px 9px;
+text-align: left;
+vertical-align: top;
+}
+thead th {
+background: #2c5282;
+color: #fff;
+font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+
+a { color: #2b6cb0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+nav#TOC {
+background: #f7fafc;
+border: 1px solid #e2e8f0;
+border-radius: 6px;
+padding: 14px 22px 14px 14px;
+margin: 16px 0 28px;
+page-break-after: always;
+}
+nav#TOC > ul { list-style: none; margin-left: 6px; padding: 0; }
+nav#TOC ul ul { margin-left: 18px; }
+nav#TOC > h2 { margin-top: 0; border: none; font-size: 13pt; }
+nav#TOC li { margin: 3px 0; }
+
+hr {
+border: none;
+border-top: 1px solid #cbd5e0;
+margin: 24px 0;
+}
+
+blockquote.note { border-left-color: #38b2ac; background: #e6fffa; color: #234e52; }
+blockquote.warning { border-left-color: #ed8936; background: #fffaf0; color: #7b341e; }
+blockquote.danger { border-left-color: #e53e3e; background: #fff5f5; color: #742a2a; }
+blockquote.success { border-left-color: #38a169; background: #f0fff4; color: #22543d; }
+
+@media print {
+body { font-size: 10pt; max-width: none; margin: 0; padding: 0; }
+a { color: #1a365d; }
+pre { font-size: 8.8pt; }
+nav#TOC { page-break-after: always; }
+h1, h2 { page-break-before: auto; }
+h1 { page-break-before: always; }
+h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
+}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">oom-watch — Architecture and Design Decisions</h1>
+<p class="subtitle">Why it is the way it is</p>
+<p class="author">OOM-Protect maintainers</p>
+<p class="date">2026-04-30</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#oom-watch-architecture" id="toc-oom-watch-architecture">oom-watch — Architecture</a>
+<ul>
+<li><a href="#single-sentence-summary" id="toc-single-sentence-summary">Single-sentence summary</a></li>
+<li><a href="#component-diagram" id="toc-component-diagram">Component
+diagram</a></li>
+<li><a href="#why-these-decisions" id="toc-why-these-decisions">Why
+these decisions</a>
+<ul>
+<li><a href="#why-go-and-not-bash" id="toc-why-go-and-not-bash">Why Go
+and not bash</a></li>
+<li><a href="#why-atop-and-not-proc-directly" id="toc-why-atop-and-not-proc-directly">Why atop and not /proc
+directly</a></li>
+<li><a href="#why-stdlib-only-no-yaml.v3-no-testify" id="toc-why-stdlib-only-no-yaml.v3-no-testify">Why stdlib only (no
+yaml.v3, no testify)</a></li>
+<li><a href="#why-json-config-and-not-yaml" id="toc-why-json-config-and-not-yaml">Why JSON config and not
+YAML</a></li>
+<li><a href="#why-an-onincident-callback-instead-of-monitor-importing-snapshot" id="toc-why-an-onincident-callback-instead-of-monitor-importing-snapshot">Why
+an <code>OnIncident</code> callback instead of monitor importing
+snapshot</a></li>
+<li><a href="#why-best-effort-snapshot-capture" id="toc-why-best-effort-snapshot-capture">Why “best-effort” snapshot
+capture</a></li>
+<li><a href="#why-atomic-writes" id="toc-why-atomic-writes">Why atomic
+writes</a></li>
+<li><a href="#why-the-cooldown-bypasses-on-escalation" id="toc-why-the-cooldown-bypasses-on-escalation">Why the cooldown
+bypasses on escalation</a></li>
+</ul></li>
+<li><a href="#threshold-rationale" id="toc-threshold-rationale">Threshold rationale</a></li>
+<li><a href="#anti-bluff-testing-applied" id="toc-anti-bluff-testing-applied">Anti-bluff testing —
+applied</a></li>
+<li><a href="#what-this-daemon-does-not-do" id="toc-what-this-daemon-does-not-do">What this daemon does <em>not</em>
+do</a></li>
+<li><a href="#future-work" id="toc-future-work">Future work</a></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
+</ul></li>
+</ul>
+</nav>
+<section id="oom-watch-architecture" class="level1">
+<h1>oom-watch — Architecture</h1>
+<p>This document explains the <em>why</em> behind the daemon. The user
+manual (<code>manuals/oom-watch-manual.md</code>) explains the
+<em>how</em>.</p>
+<section id="single-sentence-summary" class="level2">
+<h2>Single-sentence summary</h2>
+<p><code>oom-watch</code> is an idempotent, stdlib-only Go daemon that
+periodically asks atop for one parseable sample, runs it through a pure
+threshold engine, and — if the verdict is non-zero and the cooldown has
+elapsed (or an escalation has occurred) — atomically writes a Markdown
+forensic report assembled from the sample plus best-effort /proc,
+cgroup, and journal captures.</p>
+</section>
+<section id="component-diagram" class="level2">
+<h2>Component diagram</h2>
+<pre><code>                    ┌──────────────┐
+                    │ /etc/oom-    │
+                    │ watch/       │
+                    │ config.json  │
+                    └──────┬───────┘
+                           │ (loaded once at startup, validated)
+                           ▼
+   atop ◄────── exec ───── oomwatch (long-running)
+   (-PALL N 2)             │
+                           │
+                           ├── parser  → typed Sample {MEM, SWP, PSI, CPL, PRC, PRM, ...}
+                           │
+                           ├── threshold engine (pure)  → Verdict {Severity, [Trigger]}
+                           │
+                           ├── cooldown / escalation discipline
+                           │
+                           ▼ on incident:
+            snapshot.Capture (best-effort)
+              ├── /proc/meminfo, loadavg, pressure/{mem,cpu,io}
+              ├── /sys/fs/cgroup/user.slice/user-&lt;uid&gt;.slice/memory.*
+              ├── journalctl -n 200 (5s timeout)
+              └── top processes from atop.PRM/PRC
+                           │
+                           ▼
+            report.WriteMarkdown (atomic temp+rename)
+                           │
+                           ▼
+              /var/log/oom-watch/reports/
+                YYYY-MM-DDTHH-MM-SSZ-&lt;severity&gt;.md</code></pre>
+</section>
+<section id="why-these-decisions" class="level2">
+<h2>Why these decisions</h2>
+<section id="why-go-and-not-bash" class="level3">
+<h3>Why Go and not bash</h3>
+<p><code>oom-hardening.sh</code> and <code>oom-runner.sh</code> are bash
+because they are <em>one-shot installers / wrappers</em> — they need to
+be reviewable as plain text by a sysadmin. <code>oom-watch</code> is
+<em>long-running and stateful</em> (cooldowns, severity tracking) and
+must run without operator attention for weeks. Bash doesn’t give you
+typed structs, a stdlib HTTP/JSON parser that won’t panic, or
+<code>slog</code>. Go does, and produces a single statically-built
+binary.</p>
+</section>
+<section id="why-atop-and-not-proc-directly" class="level3">
+<h3>Why atop and not /proc directly</h3>
+<p>Three reasons. First, atop already does the hard work of consistent
+sampling, command-name handling (the <code>(cmd with spaces)</code>
+form), and per-process accounting (PRM, PRC). Re-implementing that would
+be a multi-month project with many subtle bugs. Second, atop is already
+mandatory in this environment because the post-mortem
+(<code>reports/Crash_Report.md</code>) recommends it. Third, atop’s
+parseable output (<code>-PALL</code>) is stable and documented in the
+man page; we depend on a contract atop maintains, not on internals.</p>
+</section>
+<section id="why-stdlib-only-no-yaml.v3-no-testify" class="level3">
+<h3>Why stdlib only (no yaml.v3, no testify)</h3>
+<p>Reproducibility. The binary must build offline, on any machine that
+has Go 1.22+, with no <code>go mod tidy</code> network call. JSON is
+universal; sysadmins are comfortable editing it. testify is convenient
+but every assertion it provides can be written in 5 lines of stdlib
+<code>t.Errorf</code>.</p>
+</section>
+<section id="why-json-config-and-not-yaml" class="level3">
+<h3>Why JSON config and not YAML</h3>
+<p>JSON has zero ambiguity (no Norway problem, no significant
+whitespace), is in the stdlib, and the full config is &lt; 30 lines.
+YAML’s only advantage — comments — is replaced here by aliased keys
+(<code>_comment</code>) plus the example file being heavily
+commented.</p>
+</section>
+<section id="why-an-onincident-callback-instead-of-monitor-importing-snapshot" class="level3">
+<h3>Why an <code>OnIncident</code> callback instead of monitor importing
+snapshot</h3>
+<p>Acyclic dependencies. <code>snapshot.Snapshot</code> has a
+<code>Verdict</code> field of type <code>monitor.Verdict</code>. If
+<code>monitor</code> then imported <code>snapshot</code> to call
+<code>Capture</code>, we’d have a cycle. The cleanest fix is to make
+<code>monitor</code> declare the <em>callback shape</em> and have
+<code>cmd/oomwatch/main.go</code> wire <code>snapshot.Capture</code> and
+<code>report.WriteMarkdown</code> together.</p>
+</section>
+<section id="why-best-effort-snapshot-capture" class="level3">
+<h3>Why “best-effort” snapshot capture</h3>
+<p>A perfect-or-nothing snapshot would miss the most important reports —
+the ones produced under degraded conditions where /proc/pressure is
+unreadable or journalctl times out. A report with 8 of 10 sections + a
+<code>Capture errors</code> section that names the missing two is far
+more useful than no report at all. Tests enforce this:
+<code>TestCapture_PartialFailure</code> asserts the snapshot is non-nil
+and <code>Errors</code> lists the missing files.</p>
+</section>
+<section id="why-atomic-writes" class="level3">
+<h3>Why atomic writes</h3>
+<p>If the daemon is killed mid-write (the OOM scenario itself!) we must
+not leave a half-written <code>.md</code> that downstream tooling will
+misparse. We write to <code>.oom-watch-*.tmp</code> in the same
+directory and <code>os.Rename</code> on success.
+<code>TestWriteMarkdown_NoLeftoverTemp</code> verifies this.</p>
+</section>
+<section id="why-the-cooldown-bypasses-on-escalation" class="level3">
+<h3>Why the cooldown bypasses on escalation</h3>
+<p>Without it, the most important transition — WARN → CRITICAL — would
+be silently dropped if it occurred within the warn-level cooldown
+window. That’s exactly when you most need a report.
+<code>TestLoop_EscalationBypassesCooldown</code> verifies this.</p>
+</section>
+</section>
+<section id="threshold-rationale" class="level2">
+<h2>Threshold rationale</h2>
+<table>
+<colgroup>
+<col style="width: 30%" />
+<col style="width: 40%" />
+<col style="width: 30%" />
+</colgroup>
+<thead>
+<tr>
+<th>Metric</th>
+<th style="text-align: right;">Default</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>memory_used_ratio_critical</code></td>
+<td style="text-align: right;">0.95</td>
+<td>Below this the kernel can usually reclaim from caches without
+thrashing. At 0.95 the next allocation is likely to swap or OOM.</td>
+</tr>
+<tr>
+<td><code>psi_mem_full_avg10_critical</code></td>
+<td style="text-align: right;">30.0</td>
+<td>“All non-idle tasks fully stalled on memory ≥30% of the last 10
+seconds” — the system is no longer making forward progress.</td>
+</tr>
+<tr>
+<td><code>psi_mem_full_avg10_warn</code></td>
+<td style="text-align: right;">10.0</td>
+<td>Detectable user-visible slowness begins around here.</td>
+</tr>
+<tr>
+<td><code>swap_used_ratio_critical</code></td>
+<td style="text-align: right;">0.80</td>
+<td>Beyond 80% swap, swapping latency dominates and any further pressure
+means OOM kills.</td>
+</tr>
+<tr>
+<td><code>load_per_cpu_critical</code></td>
+<td style="text-align: right;">4.0</td>
+<td>Sustained 4× saturation on per-CPU load is not transient queueing;
+something is genuinely overloaded.</td>
+</tr>
+</tbody>
+</table>
+<p>These mirror the post-mortem in <code>reports/Crash_Report.md</code>
+and the systemd-oomd defaults set by <code>oom-hardening.sh</code>.</p>
+</section>
+<section id="anti-bluff-testing-applied" class="level2">
+<h2>Anti-bluff testing — applied</h2>
+<p>Every package has at least one test that asserts a specific value
+derived from a real fixture. Examples:</p>
+<ul>
+<li><code>TestParse_RealFixture</code> asserts
+<code>MEM.AvailPages == 4500000</code> and
+<code>PSI.MemFullAvg10 == 45.20</code> — both extracted from the fixture
+by hand. A parser that returned zero values would fail.</li>
+<li><code>TestCapture_FakeProc</code> writes specific bytes to a fake
+<code>/proc/meminfo</code> and asserts those bytes appear in the
+snapshot.</li>
+<li><code>TestWriteMarkdown_FullReport</code> writes a known Snapshot,
+reads the file back, and asserts every required section heading appears
+in the body.</li>
+</ul>
+<p>The mutation Challenge
+(<code>challenge-tests-are-not-bluffs.sh</code>) breaks
+<code>AvailPages: pi(24)</code> to <code>AvailPages: 0</code>, runs the
+suite, asserts non-zero exit, restores. If a future contributor rewrites
+the parser as a no-op, the Challenge will fail.</p>
+</section>
+<section id="what-this-daemon-does-not-do" class="level2">
+<h2>What this daemon does <em>not</em> do</h2>
+<ul>
+<li><strong>It does not kill processes.</strong> Killing is the job of
+<code>systemd-oomd</code> (configured by <code>oom-hardening.sh</code>)
+and the kernel OOM-killer. oom-watch only writes reports.</li>
+<li><strong>It does not page or alert externally.</strong> No email, no
+Slack, no PagerDuty. Reports are local artifacts; integrate with your
+alerting tool of choice (an <code>inotifywait</code> watcher on
+<code>/var/log/oom-watch/reports/</code> is a typical first step).</li>
+<li><strong>It does not rotate or compress reports.</strong> Use
+<code>find ... -mtime +30 -delete</code> or logrotate.</li>
+<li><strong>It does not run as non-root.</strong> It needs to read
+/proc/<pid>/stat for every process and the cgroup tree; doing that as a
+non-root user requires per-process permissions that are not
+portable.</li>
+</ul>
+</section>
+<section id="future-work" class="level2">
+<h2>Future work</h2>
+<ul>
+<li><strong>netatop-bpf integration</strong> — atop’s optional
+<code>netatop</code> module emits PRN (per-process network) lines. Wire
+those into the snapshot when present.</li>
+<li><strong>Memory.events delta tracking</strong> — read
+<code>/sys/fs/cgroup/.../memory.events</code> and report
+<code>oom_kill</code> / <code>oom</code> deltas since previous
+sample.</li>
+<li><strong>HTTP endpoint</strong> — a <code>--listen :9999</code> mode
+that serves the latest 100 reports as a JSON index. The
+<code>atophttpd</code> project shows the pattern.</li>
+<li><strong>Plot generation</strong> — convert atop logs around the
+incident into PNG plots, link from the report. The
+<code>atopsar-plot</code> project is a starting reference.</li>
+</ul>
+</section>
+<section id="see-also" class="level2">
+<h2>See also</h2>
+<ul>
+<li><a href="../Constitution.md"><code>Constitution.md</code></a> —
+anti-bluff testing charter (Article I).</li>
+<li><a href="../manuals/oom-watch-manual.md"><code>manuals/oom-watch-manual.md</code></a>
+— user-facing operations guide.</li>
+<li><a href="Crash_Report.md"><code>reports/Crash_Report.md</code></a> —
+the 2026-04-28 incident this toolkit answers.</li>
+<li><a href="../oom-watch/README.md"><code>oom-watch/README.md</code></a> —
+submodule entry point.</li>
+</ul>
+</section>
+</section>
+</body>
+</html>

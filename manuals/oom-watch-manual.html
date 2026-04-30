@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="OOM-Protect maintainers" />
+  <meta name="dcterms.date" content="2026-04-30" />
+  <title>oom-watch — User Manual</title>
+  <style>
+
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ background-color: #f8f8f8; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ef2929; } 
+code span.an { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.at { color: #204a87; } 
+code span.bn { color: #0000cf; } 
+code span.cf { color: #204a87; font-weight: bold; } 
+code span.ch { color: #4e9a06; } 
+code span.cn { color: #8f5902; } 
+code span.co { color: #8f5902; font-style: italic; } 
+code span.cv { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.do { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.dt { color: #204a87; } 
+code span.dv { color: #0000cf; } 
+code span.er { color: #a40000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #0000cf; } 
+code span.fu { color: #204a87; font-weight: bold; } 
+code span.im { } 
+code span.in { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.kw { color: #204a87; font-weight: bold; } 
+code span.op { color: #ce5c00; font-weight: bold; } 
+code span.ot { color: #8f5902; } 
+code span.pp { color: #8f5902; font-style: italic; } 
+code span.sc { color: #ce5c00; font-weight: bold; } 
+code span.ss { color: #4e9a06; } 
+code span.st { color: #4e9a06; } 
+code span.va { color: #000000; } 
+code span.vs { color: #4e9a06; } 
+code span.wa { color: #8f5902; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+@page {
+size: A4;
+margin: 22mm 18mm 22mm 18mm;
+@bottom-center {
+content: counter(page) " / " counter(pages);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+@top-right {
+content: string(doctitle);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+}
+html { font-size: 11pt; }
+body {
+font-family: "DejaVu Sans", "Liberation Sans", "Helvetica", sans-serif;
+line-height: 1.5;
+color: #1a1a1a;
+max-width: 920px;
+margin: 24px auto;
+padding: 0 18px 48px;
+background: #fff;
+hyphens: auto;
+}
+
+header.title-block {
+border-bottom: 2px solid #2b6cb0;
+padding-bottom: 12px;
+margin-bottom: 28px;
+}
+h1.title {
+font-size: 26pt;
+color: #1a365d;
+margin: 0 0 4px;
+string-set: doctitle content();
+}
+p.subtitle, p.author, p.date {
+margin: 2px 0;
+color: #555;
+font-size: 10.5pt;
+}
+
+h1, h2, h3, h4, h5, h6 {
+font-family: "DejaVu Sans", sans-serif;
+color: #1a365d;
+page-break-after: avoid;
+line-height: 1.25;
+}
+h1 { font-size: 20pt; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-top: 32px; }
+h2 { font-size: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-top: 26px; }
+h3 { font-size: 13pt; margin-top: 22px; color: #2c5282; }
+h4 { font-size: 11.5pt; margin-top: 18px; color: #2c5282; }
+
+p { margin: 0.6em 0; }
+ul, ol { margin: 0.6em 0 0.6em 22px; padding: 0; }
+li { margin: 4px 0; }
+
+code {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 0.92em;
+background: #f1f5f9;
+color: #1a202c;
+padding: 1px 5px;
+border-radius: 3px;
+border: 1px solid #e2e8f0;
+}
+
+pre {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 9.5pt;
+background: #1a202c;
+color: #f7fafc;
+padding: 12px 14px;
+border-radius: 6px;
+overflow-x: auto;
+page-break-inside: avoid;
+line-height: 1.45;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+pre code {
+background: transparent;
+color: inherit;
+border: none;
+padding: 0;
+font-size: inherit;
+}
+
+blockquote {
+margin: 0.8em 0;
+padding: 8px 14px;
+border-left: 4px solid #4299e1;
+background: #ebf8ff;
+color: #2a4365;
+border-radius: 0 4px 4px 0;
+}
+
+table {
+border-collapse: collapse;
+width: 100%;
+margin: 1em 0;
+font-size: 10pt;
+page-break-inside: avoid;
+}
+th, td {
+border: 1px solid #cbd5e0;
+padding: 6px 9px;
+text-align: left;
+vertical-align: top;
+}
+thead th {
+background: #2c5282;
+color: #fff;
+font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+
+a { color: #2b6cb0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+nav#TOC {
+background: #f7fafc;
+border: 1px solid #e2e8f0;
+border-radius: 6px;
+padding: 14px 22px 14px 14px;
+margin: 16px 0 28px;
+page-break-after: always;
+}
+nav#TOC > ul { list-style: none; margin-left: 6px; padding: 0; }
+nav#TOC ul ul { margin-left: 18px; }
+nav#TOC > h2 { margin-top: 0; border: none; font-size: 13pt; }
+nav#TOC li { margin: 3px 0; }
+
+hr {
+border: none;
+border-top: 1px solid #cbd5e0;
+margin: 24px 0;
+}
+
+blockquote.note { border-left-color: #38b2ac; background: #e6fffa; color: #234e52; }
+blockquote.warning { border-left-color: #ed8936; background: #fffaf0; color: #7b341e; }
+blockquote.danger { border-left-color: #e53e3e; background: #fff5f5; color: #742a2a; }
+blockquote.success { border-left-color: #38a169; background: #f0fff4; color: #22543d; }
+
+@media print {
+body { font-size: 10pt; max-width: none; margin: 0; padding: 0; }
+a { color: #1a365d; }
+pre { font-size: 8.8pt; }
+nav#TOC { page-break-after: always; }
+h1, h2 { page-break-before: auto; }
+h1 { page-break-before: always; }
+h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
+}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">oom-watch — User Manual</h1>
+<p class="subtitle">A Go monitoring daemon for OOM-Protect</p>
+<p class="author">OOM-Protect maintainers</p>
+<p class="date">2026-04-30</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#oom-watch-user-manual" id="toc-oom-watch-user-manual">oom-watch — User Manual</a>
+<ul>
+<li><a href="#why-it-exists" id="toc-why-it-exists">Why it
+exists</a></li>
+<li><a href="#constitution-anti-bluff-testing" id="toc-constitution-anti-bluff-testing">Constitution / anti-bluff
+testing</a></li>
+<li><a href="#requirements" id="toc-requirements">Requirements</a></li>
+<li><a href="#build" id="toc-build">Build</a></li>
+<li><a href="#install" id="toc-install">Install</a></li>
+<li><a href="#command-line-flags" id="toc-command-line-flags">Command-line flags</a></li>
+<li><a href="#configuration" id="toc-configuration">Configuration</a></li>
+<li><a href="#severity-ladder-and-cooldown" id="toc-severity-ladder-and-cooldown">Severity ladder and
+cooldown</a></li>
+<li><a href="#anatomy-of-a-report" id="toc-anatomy-of-a-report">Anatomy
+of a report</a></li>
+<li><a href="#operational-tasks" id="toc-operational-tasks">Operational
+tasks</a></li>
+<li><a href="#tuning" id="toc-tuning">Tuning</a></li>
+<li><a href="#failure-modes-and-recovery" id="toc-failure-modes-and-recovery">Failure modes and recovery</a></li>
+<li><a href="#integration-with-the-rest-of-oom-protect" id="toc-integration-with-the-rest-of-oom-protect">Integration with the
+rest of OOM-Protect</a></li>
+<li><a href="#resources-used" id="toc-resources-used">Resources
+used</a></li>
+<li><a href="#definition-of-done-per-constitution" id="toc-definition-of-done-per-constitution">Definition of done (per
+Constitution)</a></li>
+</ul></li>
+</ul>
+</nav>
+<section id="oom-watch-user-manual" class="level1">
+<h1>oom-watch — User Manual</h1>
+<p><code>oom-watch</code> is the third leg of OOM-Protect. It is a Go
+daemon that uses <a href="https://github.com/Atoptool/atop">atop</a> to
+sample system state, evaluates thresholds, and writes a detailed
+Markdown forensic report <strong>just before</strong> the system would
+have been pushed off the cliff. By the time you read the report two days
+later, every datum needed to reason about the incident — top processes,
+/proc/meminfo, PSI, cgroup memory, journal tail — is already on
+disk.</p>
+<p>It complements:</p>
+<ul>
+<li><strong><code>oom-hardening.sh</code></strong> — sets the
+system-wide umbrella (cgroup limits on <code>user.slice</code>,
+<code>systemd-oomd</code>, sysctls).</li>
+<li><strong><code>oom-runner.sh</code></strong> — bounds individual
+workloads (per-leaf cgroup scopes/services).</li>
+<li><strong><code>oom-watch</code></strong> <em>(this tool)</em> —
+observes the umbrella in real time and produces evidence when thresholds
+breach.</li>
+</ul>
+<section id="why-it-exists" class="level2">
+<h2>Why it exists</h2>
+<p>After the 2026-04-28 user-manager OOM kill on host <code>nezha</code>
+(see <code>reports/Crash_Report.md</code>), we wanted <em>evidence
+collected while the system was still alive</em>. Atop’s own
+<code>.log</code> files are post-hoc, the <code>journal</code> only has
+whatever was emitted, and <code>dmesg</code> records the OOM victim but
+not the broader context. <code>oom-watch</code> writes a self-contained
+Markdown report — top processes, /proc snapshots, PSI, cgroup state,
+recent journal — at the moment a threshold breaches, so the picture is
+preserved before the cascade.</p>
+</section>
+<section id="constitution-anti-bluff-testing" class="level2">
+<h2>Constitution / anti-bluff testing</h2>
+<p>Per the project <code>Constitution.md</code>, every test and
+Challenge in this toolchain must prove the product really works.
+<code>oom-watch</code> enforces this:</p>
+<ul>
+<li>Unit tests use real fixtures
+(<code>oom-watch/internal/atop/testdata/sample.txt</code>) and temp
+/proc trees with specific assertions.</li>
+<li>Challenges (<code>challenges/challenge-*.sh</code>) run the
+<strong>built <code>oomwatch</code> binary</strong> and assert against
+on-disk artifacts.</li>
+<li>One Challenge (<code>challenge-tests-are-not-bluffs.sh</code>) is a
+self-test of the test suite: it mutates a production line, confirms
+tests go red, and restores.</li>
+</ul>
+<p>No <code>t.Skip</code>, no <code>|| true</code>, no swallowed exit
+codes. If the suite is green, the product really works.</p>
+</section>
+<section id="requirements" class="level2">
+<h2>Requirements</h2>
+<ul>
+<li>Linux, kernel ≥ 5.15 (PSI), cgroup v2.</li>
+<li><code>atop</code> installed and on <code>$PATH</code>. atop must run
+without arguments (it self-installs <code>/var/log/atop/</code> lazily,
+but oom-watch does not depend on those logs).</li>
+<li><code>systemd</code> ≥ 248 if you want the
+<code>oom-watch.service</code> unit.</li>
+<li>Go 1.22+ to build from source.</li>
+</ul>
+</section>
+<section id="build" class="level2">
+<h2>Build</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> oomwatch-build       <span class="co"># builds oom-watch/oomwatch</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> oomwatch-test        <span class="co"># go vet + go test (anti-bluff unit suite)</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> challenges           <span class="co"># full E2E suite (anti-bluff)</span></span></code></pre></div>
+<p>Or directly:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> oom-watch</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">go</span> build <span class="at">-o</span> oomwatch ./cmd/oomwatch</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="ex">go</span> test <span class="at">-count</span><span class="op">=</span>1 ./...</span></code></pre></div>
+</section>
+<section id="install" class="level2">
+<h2>Install</h2>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-install</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl enable <span class="at">--now</span> oom-watch.service</span></code></pre></div>
+<p>This places:</p>
+<ul>
+<li><code>/usr/local/sbin/oomwatch</code></li>
+<li><code>/etc/oom-watch/config.json</code> (from
+<code>oom-watch/config/oom-watch.example.json</code>, only if not
+already present)</li>
+<li><code>/etc/systemd/system/oom-watch.service</code></li>
+<li><code>/var/log/oom-watch/reports/</code> (created by daemon at
+start)</li>
+<li><code>/var/lib/oom-watch/</code> (state)</li>
+</ul>
+<p>Reports appear under <code>/var/log/oom-watch/reports/</code>, named
+<code>YYYY-MM-DDTHH-MM-SSZ-&lt;severity&gt;.md</code>.</p>
+</section>
+<section id="command-line-flags" class="level2">
+<h2>Command-line flags</h2>
+<pre><code>oomwatch [flags]
+  -config PATH       JSON config; omit for defaults
+  -dry-run           validate config and exit (rc=0 if OK, 2 if invalid)
+  -one-shot          take one sample, write a report unconditionally, exit
+  -print-config      print effective config (after defaults) and exit
+  -version           print version and exit</code></pre>
+</section>
+<section id="configuration" class="level2">
+<h2>Configuration</h2>
+<p>JSON. The complete example is
+<code>oom-watch/config/oom-watch.example.json</code>. Every threshold
+has a <code>notice / warn / critical</code> ladder where applicable:</p>
+<table>
+<colgroup>
+<col style="width: 30%" />
+<col style="width: 40%" />
+<col style="width: 30%" />
+</colgroup>
+<thead>
+<tr>
+<th>Field</th>
+<th style="text-align: right;">Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>interval_seconds</code></td>
+<td style="text-align: right;">10</td>
+<td>sampling cadence</td>
+</tr>
+<tr>
+<td><code>report_dir</code></td>
+<td style="text-align: right;"><code>/var/log/oom-watch/reports</code></td>
+<td>where reports land</td>
+</tr>
+<tr>
+<td><code>state_dir</code></td>
+<td style="text-align: right;"><code>/var/lib/oom-watch</code></td>
+<td>reserved for future state</td>
+</tr>
+<tr>
+<td><code>log_level</code></td>
+<td style="text-align: right;"><code>info</code></td>
+<td><code>debug</code>, <code>info</code>, <code>warn</code>,
+<code>error</code></td>
+</tr>
+<tr>
+<td><code>log_format</code></td>
+<td style="text-align: right;"><code>text</code></td>
+<td><code>text</code> or <code>json</code></td>
+</tr>
+<tr>
+<td><code>atop_binary</code></td>
+<td style="text-align: right;"><code>atop</code></td>
+<td>override if non-standard install</td>
+</tr>
+<tr>
+<td><code>thresholds.memory_used_ratio_notice</code></td>
+<td style="text-align: right;">0.80</td>
+<td>log only</td>
+</tr>
+<tr>
+<td><code>thresholds.memory_used_ratio_warn</code></td>
+<td style="text-align: right;">0.90</td>
+<td>first reportable severity</td>
+</tr>
+<tr>
+<td><code>thresholds.memory_used_ratio_critical</code></td>
+<td style="text-align: right;">0.95</td>
+<td>escalate, report regardless of cooldown</td>
+</tr>
+<tr>
+<td><code>thresholds.swap_used_ratio_warn</code></td>
+<td style="text-align: right;">0.50</td>
+<td></td>
+</tr>
+<tr>
+<td><code>thresholds.swap_used_ratio_critical</code></td>
+<td style="text-align: right;">0.80</td>
+<td></td>
+</tr>
+<tr>
+<td><code>thresholds.psi_mem_full_avg10_warn</code></td>
+<td style="text-align: right;">10.0</td>
+<td>percent, leading indicator of OOM</td>
+</tr>
+<tr>
+<td><code>thresholds.psi_mem_full_avg10_critical</code></td>
+<td style="text-align: right;">30.0</td>
+<td>imminent thrash</td>
+</tr>
+<tr>
+<td><code>thresholds.psi_mem_some_avg10_warn</code></td>
+<td style="text-align: right;">40.0</td>
+<td>partial stalls</td>
+</tr>
+<tr>
+<td><code>thresholds.load_per_cpu_warn</code></td>
+<td style="text-align: right;">2.0</td>
+<td>load1 / NumCPU</td>
+</tr>
+<tr>
+<td><code>thresholds.load_per_cpu_critical</code></td>
+<td style="text-align: right;">4.0</td>
+<td></td>
+</tr>
+<tr>
+<td><code>report.min_interval_seconds</code></td>
+<td style="text-align: right;">60</td>
+<td>cooldown between same-severity reports</td>
+</tr>
+<tr>
+<td><code>report.top_n_processes</code></td>
+<td style="text-align: right;">20</td>
+<td>size of “Top processes” tables</td>
+</tr>
+</tbody>
+</table>
+<p>Validation (enforced at startup):</p>
+<ul>
+<li>Notice ≤ Warn ≤ Critical for every metric.</li>
+<li><code>memory_used_ratio_critical</code> must be
+<code>&lt; 1.0</code> (it would otherwise never fire).</li>
+<li>Unknown fields are rejected — protects against silent typos.</li>
+</ul>
+</section>
+<section id="severity-ladder-and-cooldown" class="level2">
+<h2>Severity ladder and cooldown</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Severity</th>
+<th>Trigger</th>
+<th>Cooldown</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OK</td>
+<td>nothing breached</td>
+<td>n/a</td>
+</tr>
+<tr>
+<td>NOTICE</td>
+<td>any notice-level threshold</td>
+<td>logged only, no report</td>
+</tr>
+<tr>
+<td>WARN</td>
+<td>any warn-level threshold</td>
+<td>report once per <code>min_interval_seconds</code></td>
+</tr>
+<tr>
+<td>CRITICAL</td>
+<td>any critical-level threshold</td>
+<td>always reports; bypasses cooldown</td>
+</tr>
+</tbody>
+</table>
+<p>An <strong>escalation</strong> (e.g. WARN → CRITICAL within the
+cooldown window) always emits a new report. A flap back down to a lower
+severity logs but does not re-report; the next escalation will.</p>
+</section>
+<section id="anatomy-of-a-report" class="level2">
+<h2>Anatomy of a report</h2>
+<p>Each <code>.md</code> report contains, in order:</p>
+<ol type="1">
+<li><strong>YAML front matter</strong> — title, host, timestamp,
+severity (pandoc-friendly).</li>
+<li><strong>Triggers</strong> — table of metrics that breached, with
+observed value vs. limit.</li>
+<li><strong>Atop sample summary</strong> — single-line summaries of MEM,
+SWP, PSI, CPL.</li>
+<li><strong>Top processes by resident memory</strong> — with PID, cmd,
+RSize converted to GiB/MiB.</li>
+<li><strong>Top processes by CPU</strong> — from atop’s PRC label.</li>
+<li><strong>/proc/meminfo, /proc/loadavg,
+/proc/pressure/{memory,cpu,io}</strong> — verbatim.</li>
+<li><strong>User-slice cgroup</strong> — <code>memory.current</code>,
+<code>memory.max</code>, etc. from
+<code>/sys/fs/cgroup/user.slice/user-&lt;uid&gt;.slice/</code>.</li>
+<li><strong>Journal tail</strong> — last ~200 lines of the system
+journal.</li>
+<li><strong>Capture errors</strong> — anything we could not collect,
+named.</li>
+</ol>
+<p>Reports are atomically written (temp + rename), so a partial file is
+never observable.</p>
+</section>
+<section id="operational-tasks" class="level2">
+<h2>Operational tasks</h2>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Take one diagnostic report right now (also useful as a smoke test).</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-one-shot</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Tail live reports as they appear.</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-lt</span> /var/log/oom-watch/reports/ <span class="kw">|</span> <span class="fu">head</span> <span class="at">-10</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co"># View the most recent critical report.</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-t</span> /var/log/oom-watch/reports/<span class="pp">*</span>-critical.md <span class="dv">2</span><span class="op">&gt;</span>/dev/null <span class="kw">|</span> <span class="fu">head</span> <span class="at">-1</span> <span class="kw">|</span> <span class="fu">xargs</span> less</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Validate config before reload.</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-dry-run</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Check effective config (defaults + file overlay).</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-print-config</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Service control.</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl status oom-watch</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart oom-watch</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">-fu</span> oom-watch</span></code></pre></div>
+</section>
+<section id="tuning" class="level2">
+<h2>Tuning</h2>
+<ul>
+<li><strong>Lower <code>interval_seconds</code></strong> if you
+frequently miss fast-rising leaks (default 10s usually catches
+them).</li>
+<li><strong>Raise <code>memory_used_ratio_warn</code></strong> if you
+run sustained-high-memory workloads and don’t want a report every
+minute. The CRITICAL level should stay near 0.95 because that’s where
+the kernel starts swapping aggressively and PSI rises.</li>
+<li><strong>Raise <code>psi_mem_full_avg10_warn</code></strong> on hosts
+with chronic memory pressure; a value of 10% means tasks were fully
+stalled on memory &gt;10% of the last 10 seconds, which is already
+user-visible.</li>
+</ul>
+</section>
+<section id="failure-modes-and-recovery" class="level2">
+<h2>Failure modes and recovery</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>daemon exits 1 with <code>atop binary not found</code></td>
+<td>atop not installed</td>
+<td>install atop on the host</td>
+</tr>
+<tr>
+<td>daemon starts, no reports ever</td>
+<td>thresholds set too high; or atop returns degenerate samples (zero
+processes)</td>
+<td>run <code>oomwatch -one-shot</code> to verify the pipeline; check
+<code>journalctl -u oom-watch</code></td>
+</tr>
+<tr>
+<td>reports missing /proc/pressure section</td>
+<td>host kernel &lt; 5.15</td>
+<td>upgrade kernel; reports remain useful without PSI</td>
+</tr>
+<tr>
+<td><code>Capture errors</code> lists <code>cgroup dir empty</code></td>
+<td>running the daemon as a non-root user, or cgroup v1 host</td>
+<td>run as root via the systemd unit; for cgroup v1, the section is just
+empty</td>
+</tr>
+<tr>
+<td>reports pile up indefinitely</td>
+<td>no built-in rotation</td>
+<td>use
+<code>find /var/log/oom-watch/reports -name &#39;*.md&#39; -mtime +30 -delete</code>
+in cron, or add a logrotate snippet</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="integration-with-the-rest-of-oom-protect" class="level2">
+<h2>Integration with the rest of OOM-Protect</h2>
+<p><code>oom-hardening.sh</code> sets the cgroup ceiling on
+<code>user.slice</code>. When the user slice approaches that ceiling,
+oom-watch sees <code>memory_used_ratio</code> climb (because atop’s MEM
+uses kernel-wide <code>MemAvailable</code>, not the slice limit) AND the
+cgroup snapshot in the report shows <code>memory.current</code> close to
+<code>memory.max</code>. The two together let an investigator confirm
+the slice is the bound, not the box.</p>
+<p><code>oom-runner.sh</code> wraps individual workloads. When a wrapped
+process leaks, atop’s PRM ranks it at the top of the per-process memory
+list in the report. The PID + cmd give you everything you need to
+<code>oom-runner status &lt;unit&gt;</code> or
+<code>oom-runner kill &lt;unit&gt;</code>.</p>
+</section>
+<section id="resources-used" class="level2">
+<h2>Resources used</h2>
+<ul>
+<li><a href="https://github.com/Atoptool/atop">atop official repo</a> —
+parseable output format.</li>
+<li><a href="https://www.atoptool.nl/download/ATOP-cheatsheet-keys.pdf">atop
+interactive cheatsheet (PDF)</a> — useful when running atop
+interactively to triage a report.</li>
+<li><a href="https://www.atoptool.nl/">atoptool.nl</a>.</li>
+<li><a href="https://github.com/bytedance/netatop-bpf">bytedance/netatop-bpf</a>
+— eBPF-based per-process network stats; future integration target for
+oom-watch’s PRN label.</li>
+<li><a href="https://github.com/pizhenwei/atophttpd">pizhenwei/atophttpd</a> —
+atop served over HTTP; useful pattern for exposing oom-watch reports
+remotely.</li>
+<li><a href="https://codeberg.org/mgellner/atopsar-plot">atopsar-plot</a> —
+retrospective plotting from atop logs; complements oom-watch’s
+incident-time reports.</li>
+</ul>
+</section>
+<section id="definition-of-done-per-constitution" class="level2">
+<h2>Definition of done (per Constitution)</h2>
+<p>A change to oom-watch is not complete until:</p>
+<ol type="1">
+<li><code>make oomwatch-test</code> is green (<code>go vet</code> +
+<code>go test -count=1 ./...</code>).</li>
+<li><code>make challenges</code> is green (full E2E suite).</li>
+<li>The mutation audit has been performed at least once on the changed
+code (temporarily break a representative production line; confirm the
+related test goes red; restore).</li>
+<li>If the change adds a feature, a new Challenge in
+<code>challenges/</code> covers it.</li>
+<li>Manuals (<code>manuals/oom-watch-manual.md</code>, this file) are
+updated; <code>make docs</code> re-rendered.</li>
+</ol>
+</section>
+</section>
+</body>
+</html>

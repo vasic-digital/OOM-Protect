@@ -1,0 +1,31 @@
+{
+  "_comment": "Example oom-watch config. Copy to /etc/oom-watch/config.json and edit. Underscored keys (like this comment) are rejected; remove _comment before installing.",
+
+  "interval_seconds": 10,
+  "report_dir": "/var/log/oom-watch/reports",
+  "state_dir": "/var/lib/oom-watch",
+  "log_level": "info",
+  "log_format": "text",
+  "atop_binary": "atop",
+
+  "thresholds": {
+    "memory_used_ratio_notice":   0.80,
+    "memory_used_ratio_warn":     0.90,
+    "memory_used_ratio_critical": 0.95,
+
+    "swap_used_ratio_warn":     0.50,
+    "swap_used_ratio_critical": 0.80,
+
+    "psi_mem_full_avg10_warn":     10.0,
+    "psi_mem_full_avg10_critical": 30.0,
+    "psi_mem_some_avg10_warn":     40.0,
+
+    "load_per_cpu_warn":     2.0,
+    "load_per_cpu_critical": 4.0
+  },
+
+  "report": {
+    "min_interval_seconds": 60,
+    "top_n_processes": 20
+  }
+}

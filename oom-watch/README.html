@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>README</title>
+  <style>
+
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ background-color: #f8f8f8; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ef2929; } 
+code span.an { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.at { color: #204a87; } 
+code span.bn { color: #0000cf; } 
+code span.cf { color: #204a87; font-weight: bold; } 
+code span.ch { color: #4e9a06; } 
+code span.cn { color: #8f5902; } 
+code span.co { color: #8f5902; font-style: italic; } 
+code span.cv { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.do { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.dt { color: #204a87; } 
+code span.dv { color: #0000cf; } 
+code span.er { color: #a40000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #0000cf; } 
+code span.fu { color: #204a87; font-weight: bold; } 
+code span.im { } 
+code span.in { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.kw { color: #204a87; font-weight: bold; } 
+code span.op { color: #ce5c00; font-weight: bold; } 
+code span.ot { color: #8f5902; } 
+code span.pp { color: #8f5902; font-style: italic; } 
+code span.sc { color: #ce5c00; font-weight: bold; } 
+code span.ss { color: #4e9a06; } 
+code span.st { color: #4e9a06; } 
+code span.va { color: #000000; } 
+code span.vs { color: #4e9a06; } 
+code span.wa { color: #8f5902; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+@page {
+size: A4;
+margin: 22mm 18mm 22mm 18mm;
+@bottom-center {
+content: counter(page) " / " counter(pages);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+@top-right {
+content: string(doctitle);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+}
+html { font-size: 11pt; }
+body {
+font-family: "DejaVu Sans", "Liberation Sans", "Helvetica", sans-serif;
+line-height: 1.5;
+color: #1a1a1a;
+max-width: 920px;
+margin: 24px auto;
+padding: 0 18px 48px;
+background: #fff;
+hyphens: auto;
+}
+
+header.title-block {
+border-bottom: 2px solid #2b6cb0;
+padding-bottom: 12px;
+margin-bottom: 28px;
+}
+h1.title {
+font-size: 26pt;
+color: #1a365d;
+margin: 0 0 4px;
+string-set: doctitle content();
+}
+p.subtitle, p.author, p.date {
+margin: 2px 0;
+color: #555;
+font-size: 10.5pt;
+}
+
+h1, h2, h3, h4, h5, h6 {
+font-family: "DejaVu Sans", sans-serif;
+color: #1a365d;
+page-break-after: avoid;
+line-height: 1.25;
+}
+h1 { font-size: 20pt; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-top: 32px; }
+h2 { font-size: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-top: 26px; }
+h3 { font-size: 13pt; margin-top: 22px; color: #2c5282; }
+h4 { font-size: 11.5pt; margin-top: 18px; color: #2c5282; }
+
+p { margin: 0.6em 0; }
+ul, ol { margin: 0.6em 0 0.6em 22px; padding: 0; }
+li { margin: 4px 0; }
+
+code {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 0.92em;
+background: #f1f5f9;
+color: #1a202c;
+padding: 1px 5px;
+border-radius: 3px;
+border: 1px solid #e2e8f0;
+}
+
+pre {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 9.5pt;
+background: #1a202c;
+color: #f7fafc;
+padding: 12px 14px;
+border-radius: 6px;
+overflow-x: auto;
+page-break-inside: avoid;
+line-height: 1.45;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+pre code {
+background: transparent;
+color: inherit;
+border: none;
+padding: 0;
+font-size: inherit;
+}
+
+blockquote {
+margin: 0.8em 0;
+padding: 8px 14px;
+border-left: 4px solid #4299e1;
+background: #ebf8ff;
+color: #2a4365;
+border-radius: 0 4px 4px 0;
+}
+
+table {
+border-collapse: collapse;
+width: 100%;
+margin: 1em 0;
+font-size: 10pt;
+page-break-inside: avoid;
+}
+th, td {
+border: 1px solid #cbd5e0;
+padding: 6px 9px;
+text-align: left;
+vertical-align: top;
+}
+thead th {
+background: #2c5282;
+color: #fff;
+font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+
+a { color: #2b6cb0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+nav#TOC {
+background: #f7fafc;
+border: 1px solid #e2e8f0;
+border-radius: 6px;
+padding: 14px 22px 14px 14px;
+margin: 16px 0 28px;
+page-break-after: always;
+}
+nav#TOC > ul { list-style: none; margin-left: 6px; padding: 0; }
+nav#TOC ul ul { margin-left: 18px; }
+nav#TOC > h2 { margin-top: 0; border: none; font-size: 13pt; }
+nav#TOC li { margin: 3px 0; }
+
+hr {
+border: none;
+border-top: 1px solid #cbd5e0;
+margin: 24px 0;
+}
+
+blockquote.note { border-left-color: #38b2ac; background: #e6fffa; color: #234e52; }
+blockquote.warning { border-left-color: #ed8936; background: #fffaf0; color: #7b341e; }
+blockquote.danger { border-left-color: #e53e3e; background: #fff5f5; color: #742a2a; }
+blockquote.success { border-left-color: #38a169; background: #f0fff4; color: #22543d; }
+
+@media print {
+body { font-size: 10pt; max-width: none; margin: 0; padding: 0; }
+a { color: #1a365d; }
+pre { font-size: 8.8pt; }
+nav#TOC { page-break-after: always; }
+h1, h2 { page-break-before: auto; }
+h1 { page-break-before: always; }
+h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
+}
+</style>
+</head>
+<body>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#oom-watch" id="toc-oom-watch">oom-watch</a>
+<ul>
+<li><a href="#why" id="toc-why">Why</a></li>
+<li><a href="#status" id="toc-status">Status</a></li>
+<li><a href="#build-and-test" id="toc-build-and-test">Build and
+test</a></li>
+<li><a href="#quick-start" id="toc-quick-start">Quick start</a></li>
+<li><a href="#layout" id="toc-layout">Layout</a></li>
+<li><a href="#resources-used" id="toc-resources-used">Resources
+used</a></li>
+</ul></li>
+</ul>
+</nav>
+<section id="oom-watch" class="level1">
+<h1>oom-watch</h1>
+<p>A small Go daemon that uses <a href="https://github.com/Atoptool/atop">atop</a> to detect imminent
+system overload and write a detailed forensic Markdown report
+<strong>before</strong> the system actually breaks.</p>
+<p>It is the third leg of OOM-Protect, alongside
+<code>oom-hardening.sh</code> (the umbrella) and
+<code>oom-runner.sh</code> (the per-leaf cgroup bound).</p>
+<section id="why" class="level2">
+<h2>Why</h2>
+<p>After the 2026-04-28 user-manager OOM kill (see
+<code>../reports/Crash_Report.md</code>), we wanted <em>evidence</em> of
+what was running in the seconds before the crash — not after, when the
+kernel had already killed everything. atop logs are post-hoc; oom-watch
+writes Markdown reports while the system is still alive but heading off
+the cliff.</p>
+</section>
+<section id="status" class="level2">
+<h2>Status</h2>
+<ul>
+<li><strong>Tests:</strong> real, anti-bluff (see
+<code>Constitution.md</code> Article I). <code>go test ./...</code> and
+<code>bash ../challenges/run-all.sh</code> are part of the definition of
+done.</li>
+<li><strong>Dependencies:</strong> Go 1.22+ stdlib only. atop must be
+installed on the host at runtime.</li>
+<li><strong>Constitution:</strong> the project root
+<code>Constitution.md</code> applies; this submodule has its own
+<code>Constitution.md</code>, <code>CLAUDE.md</code>, and
+<code>AGENTS.md</code> reiterating it.</li>
+</ul>
+</section>
+<section id="build-and-test" class="level2">
+<h2>Build and test</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> oomwatch-build</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> oomwatch-test</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> oomwatch-challenges</span></code></pre></div>
+<p>Or directly:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> oom-watch</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">go</span> build <span class="at">-o</span> oomwatch ./cmd/oomwatch</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="ex">go</span> test <span class="at">-count</span><span class="op">=</span>1 ./...</span></code></pre></div>
+</section>
+<section id="quick-start" class="level2">
+<h2>Quick start</h2>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Install atop on the host (ALT: apt-get install atop, RHEL: dnf install atop, Debian/Ubuntu: apt install atop).</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Validate the config:</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ex">./oomwatch</span> <span class="at">-config</span> config/oom-watch.example.json <span class="at">-dry-run</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Take a one-shot diagnostic report:</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> ./oomwatch <span class="at">-config</span> config/oom-watch.example.json <span class="at">-one-shot</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. Install the systemd unit and start as a service (see Manual).</span></span></code></pre></div>
+<p>See <code>../manuals/oom-watch-manual.md</code> (rendered to HTML/PDF
+via <code>make docs</code>) for installation, troubleshooting, threshold
+tuning, and integration with <code>oom-hardening.sh</code>.</p>
+</section>
+<section id="layout" class="level2">
+<h2>Layout</h2>
+<pre><code>oom-watch/
+├── cmd/oomwatch/main.go     entry point + flag parsing
+├── internal/atop/           atop -PALL parser + runner
+├── internal/config/         JSON config loader (zero external deps)
+├── internal/monitor/        threshold engine + main loop
+├── internal/snapshot/       /proc + cgroup + journal capture
+├── internal/report/         Markdown report writer
+├── internal/logx/           tiny slog wrapper
+├── systemd/                 oom-watch.service unit
+├── config/                  example config
+├── Constitution.md          submodule charter (anti-bluff)
+├── CLAUDE.md                context for Claude Code
+└── AGENTS.md                context for AI agents</code></pre>
+</section>
+<section id="resources-used" class="level2">
+<h2>Resources used</h2>
+<p>This daemon was built consulting:</p>
+<ul>
+<li><a href="https://github.com/Atoptool/atop">atop official
+repository</a> — parseable output format reference.</li>
+<li><a href="https://www.atoptool.nl/download/ATOP-cheatsheet-keys.pdf">atop
+interactive cheatsheet (PDF)</a> — for cross-checking key sequences when
+running atop interactively for triage.</li>
+<li><a href="https://www.atoptool.nl/">atoptool.nl</a> — official
+site.</li>
+<li><a href="https://github.com/bytedance/netatop-bpf">bytedance/netatop-bpf</a>
+— eBPF-based per-process network stats (PRN label) — future integration
+target.</li>
+<li><a href="https://github.com/pizhenwei/atophttpd">pizhenwei/atophttpd</a> —
+atop served over HTTP — useful pattern if we ever want to expose
+oom-watch reports remotely.</li>
+<li><a href="https://codeberg.org/mgellner/atopsar-plot">atopsar-plot</a> —
+retrospective plotting from atop logs; complements oom-watch’s
+incident-time reports.</li>
+</ul>
+</section>
+</section>
+</body>
+</html>

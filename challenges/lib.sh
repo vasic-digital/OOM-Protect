@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# challenges/lib.sh — shared helpers for OOM-Protect Challenges.
+#
+# Per Constitution Article I, every Challenge here MUST exercise the real
+# product end-to-end. The helpers below enforce that discipline:
+#
+#   - chal_require <cmd>             fail loudly if a precondition is missing
+#   - chal_assert <cond> <message>   stop on first false assertion
+#   - chal_summary "section" "..."   print a verifiable success line
+#
+# Bare 'OK' is forbidden. Every passing Challenge prints exactly what it
+# verified, so a reader of the script's output can audit the claim.
+
+set -Eeuo pipefail
+
+if [[ -t 1 ]]; then
+    G=$'\033[32m'; Y=$'\033[33m'; R=$'\033[31m'; B=$'\033[1m'; C=$'\033[0m'
+else
+    G=""; Y=""; R=""; B=""; C=""
+fi
+
+CHAL_NAME="${CHAL_NAME:-$(basename "${BASH_SOURCE[1]:-challenge}" .sh)}"
+
+chal_log()  { printf '%s[%s]%s %s\n' "$B" "$CHAL_NAME" "$C" "$*" >&2; }
+chal_ok()   { printf '%s[%s] OK%s %s\n' "$G" "$CHAL_NAME" "$C" "$*" >&2; }
+chal_fail() { printf '%s[%s] FAIL%s %s\n' "$R" "$CHAL_NAME" "$C" "$*" >&2; exit 2; }
+chal_warn() { printf '%s[%s] WARN%s %s\n' "$Y" "$CHAL_NAME" "$C" "$*" >&2; }
+
+chal_require() {
+    local cmd="$1"
+    command -v "$cmd" >/dev/null 2>&1 \
+        || chal_fail "missing prerequisite: $cmd not found in PATH"
+}
+
+# chal_assert <bool-expression-as-string> <human-message>
+# Example: chal_assert "[[ -f $path ]]" "report file exists"
+chal_assert() {
+    local expr="$1" msg="$2"
+    if eval "$expr"; then
+        chal_ok "asserted: $msg"
+    else
+        chal_fail "assertion failed: $msg ($expr)"
+    fi
+}
+
+chal_assert_file_contains() {
+    local path="$1" needle="$2"
+    if [[ ! -f "$path" ]]; then
+        chal_fail "file does not exist: $path"
+    fi
+    if grep -qF -- "$needle" "$path"; then
+        chal_ok "file $path contains $(printf '%q' "$needle")"
+    else
+        chal_fail "file $path does NOT contain $(printf '%q' "$needle"); first 40 lines follow:
+$(head -40 "$path")"
+    fi
+}
+
+# chal_summary "passed: feature X verified end-to-end"
+# Required final line; must be specific.
+chal_summary() {
+    printf '%s[%s] PASS%s %s\n' "$G" "$CHAL_NAME" "$C" "$*"
+}
+
+# Resolve repo root (challenges/ is at top level).
+chal_repo_root() {
+    cd "$(dirname "${BASH_SOURCE[1]}")/.."
+    pwd
+}
+
+# Build the oomwatch binary into a temp location and echo the path. Subsequent
+# Challenges can reuse the same build by setting OOMWATCH_BIN before sourcing
+# this lib.
+chal_build_oomwatch() {
+    if [[ -n "${OOMWATCH_BIN:-}" && -x "${OOMWATCH_BIN}" ]]; then
+        printf '%s' "$OOMWATCH_BIN"
+        return
+    fi
+    local root
+    root="$(chal_repo_root)"
+    local out="${root}/oom-watch/oomwatch"
+    chal_log "building oomwatch -> $out"
+    (cd "${root}/oom-watch" && go build -o oomwatch ./cmd/oomwatch) \
+        || chal_fail "go build failed"
+    [[ -x "$out" ]] || chal_fail "binary not produced at $out"
+    printf '%s' "$out"
+}
+
+# Place a fake atop binary in $1 (a directory) that emits a canned payload
+# when invoked. Used by Challenges that don't have real atop installed.
+# Args: target_dir, fixture_path
+chal_install_fake_atop() {
+    local dir="$1" fixture="$2"
+    [[ -d "$dir" ]] || chal_fail "fake atop dir does not exist: $dir"
+    [[ -f "$fixture" ]] || chal_fail "fake atop fixture not found: $fixture"
+    cat > "$dir/atop" <<EOF
+#!/bin/sh
+cat $(printf '%q' "$fixture")
+EOF
+    chmod +x "$dir/atop"
+    chal_ok "fake atop installed at $dir/atop (emits $fixture)"
+}

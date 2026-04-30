@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>AGENTS</title>
+  <style>
+
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+@page {
+size: A4;
+margin: 22mm 18mm 22mm 18mm;
+@bottom-center {
+content: counter(page) " / " counter(pages);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+@top-right {
+content: string(doctitle);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+}
+html { font-size: 11pt; }
+body {
+font-family: "DejaVu Sans", "Liberation Sans", "Helvetica", sans-serif;
+line-height: 1.5;
+color: #1a1a1a;
+max-width: 920px;
+margin: 24px auto;
+padding: 0 18px 48px;
+background: #fff;
+hyphens: auto;
+}
+
+header.title-block {
+border-bottom: 2px solid #2b6cb0;
+padding-bottom: 12px;
+margin-bottom: 28px;
+}
+h1.title {
+font-size: 26pt;
+color: #1a365d;
+margin: 0 0 4px;
+string-set: doctitle content();
+}
+p.subtitle, p.author, p.date {
+margin: 2px 0;
+color: #555;
+font-size: 10.5pt;
+}
+
+h1, h2, h3, h4, h5, h6 {
+font-family: "DejaVu Sans", sans-serif;
+color: #1a365d;
+page-break-after: avoid;
+line-height: 1.25;
+}
+h1 { font-size: 20pt; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-top: 32px; }
+h2 { font-size: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-top: 26px; }
+h3 { font-size: 13pt; margin-top: 22px; color: #2c5282; }
+h4 { font-size: 11.5pt; margin-top: 18px; color: #2c5282; }
+
+p { margin: 0.6em 0; }
+ul, ol { margin: 0.6em 0 0.6em 22px; padding: 0; }
+li { margin: 4px 0; }
+
+code {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 0.92em;
+background: #f1f5f9;
+color: #1a202c;
+padding: 1px 5px;
+border-radius: 3px;
+border: 1px solid #e2e8f0;
+}
+
+pre {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 9.5pt;
+background: #1a202c;
+color: #f7fafc;
+padding: 12px 14px;
+border-radius: 6px;
+overflow-x: auto;
+page-break-inside: avoid;
+line-height: 1.45;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+pre code {
+background: transparent;
+color: inherit;
+border: none;
+padding: 0;
+font-size: inherit;
+}
+
+blockquote {
+margin: 0.8em 0;
+padding: 8px 14px;
+border-left: 4px solid #4299e1;
+background: #ebf8ff;
+color: #2a4365;
+border-radius: 0 4px 4px 0;
+}
+
+table {
+border-collapse: collapse;
+width: 100%;
+margin: 1em 0;
+font-size: 10pt;
+page-break-inside: avoid;
+}
+th, td {
+border: 1px solid #cbd5e0;
+padding: 6px 9px;
+text-align: left;
+vertical-align: top;
+}
+thead th {
+background: #2c5282;
+color: #fff;
+font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+
+a { color: #2b6cb0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+nav#TOC {
+background: #f7fafc;
+border: 1px solid #e2e8f0;
+border-radius: 6px;
+padding: 14px 22px 14px 14px;
+margin: 16px 0 28px;
+page-break-after: always;
+}
+nav#TOC > ul { list-style: none; margin-left: 6px; padding: 0; }
+nav#TOC ul ul { margin-left: 18px; }
+nav#TOC > h2 { margin-top: 0; border: none; font-size: 13pt; }
+nav#TOC li { margin: 3px 0; }
+
+hr {
+border: none;
+border-top: 1px solid #cbd5e0;
+margin: 24px 0;
+}
+
+blockquote.note { border-left-color: #38b2ac; background: #e6fffa; color: #234e52; }
+blockquote.warning { border-left-color: #ed8936; background: #fffaf0; color: #7b341e; }
+blockquote.danger { border-left-color: #e53e3e; background: #fff5f5; color: #742a2a; }
+blockquote.success { border-left-color: #38a169; background: #f0fff4; color: #22543d; }
+
+@media print {
+body { font-size: 10pt; max-width: none; margin: 0; padding: 0; }
+a { color: #1a365d; }
+pre { font-size: 8.8pt; }
+nav#TOC { page-break-after: always; }
+h1, h2 { page-break-before: auto; }
+h1 { page-break-before: always; }
+h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
+}
+</style>
+</head>
+<body>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#agents.md" id="toc-agents.md">AGENTS.md</a>
+<ul>
+<li><a href="#you-are-bound-by-the-constitution" id="toc-you-are-bound-by-the-constitution">You are bound by the
+Constitution</a></li>
+<li><a href="#article-i-anti-bluff-testing-non-negotiable" id="toc-article-i-anti-bluff-testing-non-negotiable">Article I —
+Anti-Bluff Testing (Non-Negotiable)</a></li>
+<li><a href="#how-to-act" id="toc-how-to-act">How to act</a></li>
+<li><a href="#other-articles-summary" id="toc-other-articles-summary">Other articles (summary)</a></li>
+<li><a href="#pointers-for-productive-sessions" id="toc-pointers-for-productive-sessions">Pointers for productive
+sessions</a></li>
+</ul></li>
+</ul>
+</nav>
+<section id="agents.md" class="level1">
+<h1>AGENTS.md</h1>
+<p>This file is the entry point for any AI agent (Claude Code, Copilot
+CLI, Codex, Gemini CLI, custom subagents, scheduled remote agents) that
+operates on this repository.</p>
+<section id="you-are-bound-by-the-constitution" class="level2">
+<h2>You are bound by the Constitution</h2>
+<p>The repository’s authoritative charter is
+<code>Constitution.md</code> at the root. <strong>Read it
+first.</strong> It overrides default model behavior, plugin defaults,
+and any tool-specific guidance whenever they conflict, except where the
+user gives explicit instructions in chat or in
+<code>CLAUDE.md</code>.</p>
+<p>The most load-bearing rule is reproduced inline below — you may not
+skip it:</p>
+</section>
+<section id="article-i-anti-bluff-testing-non-negotiable" class="level2">
+<h2>Article I — Anti-Bluff Testing (Non-Negotiable)</h2>
+<blockquote>
+<p><strong>A passing test or Challenge MUST prove that the product
+really works. A test that passes while the product is broken is a defect
+more serious than the original bug.</strong></p>
+</blockquote>
+<p>When writing tests or Challenges as an agent:</p>
+<ol type="1">
+<li><strong>Exercise the real artifact.</strong> Run the actual built
+binary against real inputs. Stub only true external boundaries (kernel,
+network), never the code under test.</li>
+<li><strong>Assert observable outcomes.</strong> Verify files exist on
+disk with required content, exit codes, subprocess output, systemd unit
+states. “I called the function” is not an assertion.</li>
+<li><strong>Fail loudly when the feature is missing.</strong> Every test
+must be one whose green status genuinely depends on the production code
+being correct. Do mutation spot-checks: temporarily break the code and
+confirm the test goes red. If it doesn’t, that test is a bluff and must
+be rewritten.</li>
+<li><strong>No <code>t.Skip</code>, no <code>pending</code>, no
+<code>|| true</code>, no <code>--no-fail</code>, no swallowed exit
+codes.</strong> A test that cannot run is not a test.</li>
+<li><strong>Challenges must reproduce the real failure mode.</strong> A
+memory-protection Challenge must actually allocate enough memory to trip
+the threshold. Synthetic shortcuts that bypass the hazard are
+forbidden.</li>
+<li><strong>Every public feature has at least one Challenge.</strong> No
+feature ships without an end-to-end Challenge a user can reproduce by
+reading the script.</li>
+<li><strong>The suite is part of the definition of done.</strong> A
+change is not complete until <code>make test</code> and
+<code>make challenges</code> pass on a clean checkout.</li>
+</ol>
+</section>
+<section id="how-to-act" class="level2">
+<h2>How to act</h2>
+<ul>
+<li><strong>Before declaring any task done</strong>, run the relevant
+tests AND Challenges and report the <em>actual</em> outcome (paste
+output or a verifiable summary). Do not say “done” if you have not run
+the verification.</li>
+<li><strong>Before writing tests</strong>, read
+<code>Constitution.md</code> Article I and the existing tests in this
+repo to match style.</li>
+<li><strong>Before adding a feature</strong>, write or update the
+Challenge that proves the feature works end-to-end.</li>
+<li><strong>When you finish a logical unit of work</strong>, commit
+cleanly. The <code>origin</code> remote is configured to push to all
+four mirrors (GitHub, GitLab, GitFlic, GitVerse) —
+<code>git push origin main</code> covers all four.</li>
+<li><strong>Never weaken the Constitution.</strong> Submodule agents
+inherit it.</li>
+</ul>
+</section>
+<section id="other-articles-summary" class="level2">
+<h2>Other articles (summary)</h2>
+<p>The full text is in <code>Constitution.md</code>:</p>
+<ul>
+<li><strong>Article II — Idempotency and Reversibility.</strong>
+Mutating scripts must be idempotent and reversible; never restart
+<code>systemd-logind</code>, never touch fstab/swap/GRUB.</li>
+<li><strong>Article III — Documentation Parity.</strong> Every
+user-facing tool ships Markdown + HTML + PDF. <code>make docs</code>
+produces all three.</li>
+<li><strong>Article IV — Observable Behavior Over Code Beauty.</strong>
+Logs and on-disk artifacts beat internal elegance.</li>
+<li><strong>Article V — Multi-Upstream Discipline.</strong> Every commit
+on <code>main</code> must reach all four mirrors via
+<code>origin</code>.</li>
+<li><strong>Article VI — Submodule Constitutions.</strong> Any submodule
+must include its own <code>Constitution.md</code>,
+<code>CLAUDE.md</code>, and <code>AGENTS.md</code>.</li>
+</ul>
+</section>
+<section id="pointers-for-productive-sessions" class="level2">
+<h2>Pointers for productive sessions</h2>
+<ul>
+<li>The user-facing project context is in <code>CLAUDE.md</code> — read
+it for architecture and command map.</li>
+<li>The post-mortem at <code>reports/Crash_Report.md</code> is the
+load-bearing context behind every design choice.</li>
+<li>The newer Go monitoring daemon lives under <code>oom-watch/</code>
+(see its own README and <code>Constitution.md</code> if present).</li>
+<li>Build/lint/test commands are in the top-level <code>Makefile</code>
+(<code>make help</code>).</li>
+</ul>
+</section>
+</section>
+</body>
+</html>

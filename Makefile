@@ -36,10 +36,16 @@ ifneq ($(strip $(MAKE_TERMOUT)),)
     C := \033[0m
 endif
 
+OOMWATCH_DIR := $(ROOT)/oom-watch
+OOMWATCH_BIN := $(OOMWATCH_DIR)/oomwatch
+CHALLENGES   := $(ROOT)/challenges/run-all.sh
+
 .DEFAULT_GOAL := help
 .PHONY: help install dry-run uninstall rollback verify verify-stress \
         docs docs-clean test list status logs kill clean-units \
-        presets package clean all check
+        presets package clean all check \
+        oomwatch oomwatch-build oomwatch-test oomwatch-vet \
+        oomwatch-install oomwatch-clean challenges
 
 # -----------------------------------------------------------------------------
 # Help
@@ -72,6 +78,13 @@ help:
 	@printf "    make all            docs + verify (typical CI)\n"
 	@printf "    make check          Lint shell scripts\n"
 	@printf "    make clean          Remove generated files (HTML, PDF, tarball)\n"
+	@printf "\n"
+	@printf "  $(B)oom-watch (Go daemon)$(C)\n"
+	@printf "    make oomwatch-build       Build the oomwatch binary\n"
+	@printf "    make oomwatch-test        go vet + go test (anti-bluff unit suite)\n"
+	@printf "    make challenges           Run E2E Challenges (anti-bluff)\n"
+	@printf "    make oomwatch-install     Install binary, config skeleton, systemd unit (sudo)\n"
+	@printf "    make oomwatch-clean       Remove built binary\n"
 
 # -----------------------------------------------------------------------------
 # Apply / verify
@@ -176,6 +189,43 @@ package: docs
 
 all: docs verify
 
-clean: docs-clean
+clean: docs-clean oomwatch-clean
 	@rm -f $(ROOT)/oom-toolkit-*.tar.gz
 	@printf "$(G)clean$(C)\n"
+
+# -----------------------------------------------------------------------------
+# oom-watch (Go monitoring daemon)
+# -----------------------------------------------------------------------------
+oomwatch oomwatch-build: $(OOMWATCH_BIN)
+
+$(OOMWATCH_BIN): $(shell find $(OOMWATCH_DIR) -name '*.go' -not -name '*_test.go' 2>/dev/null)
+	@printf "$(B)Building oomwatch...$(C)\n"
+	@cd $(OOMWATCH_DIR) && go build -o oomwatch ./cmd/oomwatch
+	@printf "$(G)built:$(C) $(OOMWATCH_BIN)\n"
+
+oomwatch-vet:
+	@cd $(OOMWATCH_DIR) && go vet ./...
+	@printf "$(G)go vet:$(C) clean\n"
+
+oomwatch-test: oomwatch-vet
+	@cd $(OOMWATCH_DIR) && go test -count=1 ./...
+
+challenges: oomwatch-build
+	@bash $(CHALLENGES)
+
+oomwatch-install: $(OOMWATCH_BIN)
+	@printf "$(B)Installing oomwatch (will prompt for sudo).$(C)\n"
+	@sudo install -m 0755 -D $(OOMWATCH_BIN) /usr/local/sbin/oomwatch
+	@sudo install -d -m 0755 /etc/oom-watch /var/log/oom-watch /var/lib/oom-watch
+	@if [ ! -f /etc/oom-watch/config.json ]; then \
+	    sudo install -m 0644 $(OOMWATCH_DIR)/config/oom-watch.example.json /etc/oom-watch/config.json; \
+	    printf "$(G)installed:$(C) /etc/oom-watch/config.json (from example)\n"; \
+	else \
+	    printf "$(Y)skipped:$(C) /etc/oom-watch/config.json already present\n"; \
+	fi
+	@sudo install -m 0644 $(OOMWATCH_DIR)/systemd/oom-watch.service /etc/systemd/system/oom-watch.service
+	@sudo systemctl daemon-reload
+	@printf "$(G)installed.$(C) Enable with: sudo systemctl enable --now oom-watch.service\n"
+
+oomwatch-clean:
+	@rm -f $(OOMWATCH_BIN)

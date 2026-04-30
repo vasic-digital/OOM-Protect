@@ -158,9 +158,14 @@ build_doc() {
 DOCS=()
 for cand in \
     "$ROOT/README.md" \
+    "$ROOT/Constitution.md" \
+    "$ROOT/AGENTS.md" \
     "$ROOT/Crash_Report.md" "$ROOT/reports/Crash_Report.md" \
     "$ROOT/manuals/oom-hardening-manual.md" \
-    "$ROOT/manuals/oom-runner-manual.md"
+    "$ROOT/manuals/oom-runner-manual.md" \
+    "$ROOT/manuals/oom-watch-manual.md" \
+    "$ROOT/reports/oom-watch-architecture.md" \
+    "$ROOT/oom-watch/README.md"
 do
     [[ -f "$cand" ]] && DOCS+=("$cand")
 done

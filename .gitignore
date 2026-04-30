@@ -1,0 +1,9 @@
+# Built oom-watch binary
+oom-watch/oomwatch
+
+# Generated tarballs
+oom-toolkit-*.tar.gz
+
+# Editor / OS noise
+*.swp
+.DS_Store

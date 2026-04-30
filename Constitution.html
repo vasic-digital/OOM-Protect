@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Constitution</title>
+  <style>
+
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+@page {
+size: A4;
+margin: 22mm 18mm 22mm 18mm;
+@bottom-center {
+content: counter(page) " / " counter(pages);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+@top-right {
+content: string(doctitle);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+}
+html { font-size: 11pt; }
+body {
+font-family: "DejaVu Sans", "Liberation Sans", "Helvetica", sans-serif;
+line-height: 1.5;
+color: #1a1a1a;
+max-width: 920px;
+margin: 24px auto;
+padding: 0 18px 48px;
+background: #fff;
+hyphens: auto;
+}
+
+header.title-block {
+border-bottom: 2px solid #2b6cb0;
+padding-bottom: 12px;
+margin-bottom: 28px;
+}
+h1.title {
+font-size: 26pt;
+color: #1a365d;
+margin: 0 0 4px;
+string-set: doctitle content();
+}
+p.subtitle, p.author, p.date {
+margin: 2px 0;
+color: #555;
+font-size: 10.5pt;
+}
+
+h1, h2, h3, h4, h5, h6 {
+font-family: "DejaVu Sans", sans-serif;
+color: #1a365d;
+page-break-after: avoid;
+line-height: 1.25;
+}
+h1 { font-size: 20pt; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-top: 32px; }
+h2 { font-size: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-top: 26px; }
+h3 { font-size: 13pt; margin-top: 22px; color: #2c5282; }
+h4 { font-size: 11.5pt; margin-top: 18px; color: #2c5282; }
+
+p { margin: 0.6em 0; }
+ul, ol { margin: 0.6em 0 0.6em 22px; padding: 0; }
+li { margin: 4px 0; }
+
+code {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 0.92em;
+background: #f1f5f9;
+color: #1a202c;
+padding: 1px 5px;
+border-radius: 3px;
+border: 1px solid #e2e8f0;
+}
+
+pre {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 9.5pt;
+background: #1a202c;
+color: #f7fafc;
+padding: 12px 14px;
+border-radius: 6px;
+overflow-x: auto;
+page-break-inside: avoid;
+line-height: 1.45;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+pre code {
+background: transparent;
+color: inherit;
+border: none;
+padding: 0;
+font-size: inherit;
+}
+
+blockquote {
+margin: 0.8em 0;
+padding: 8px 14px;
+border-left: 4px solid #4299e1;
+background: #ebf8ff;
+color: #2a4365;
+border-radius: 0 4px 4px 0;
+}
+
+table {
+border-collapse: collapse;
+width: 100%;
+margin: 1em 0;
+font-size: 10pt;
+page-break-inside: avoid;
+}
+th, td {
+border: 1px solid #cbd5e0;
+padding: 6px 9px;
+text-align: left;
+vertical-align: top;
+}
+thead th {
+background: #2c5282;
+color: #fff;
+font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+
+a { color: #2b6cb0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+nav#TOC {
+background: #f7fafc;
+border: 1px solid #e2e8f0;
+border-radius: 6px;
+padding: 14px 22px 14px 14px;
+margin: 16px 0 28px;
+page-break-after: always;
+}
+nav#TOC > ul { list-style: none; margin-left: 6px; padding: 0; }
+nav#TOC ul ul { margin-left: 18px; }
+nav#TOC > h2 { margin-top: 0; border: none; font-size: 13pt; }
+nav#TOC li { margin: 3px 0; }
+
+hr {
+border: none;
+border-top: 1px solid #cbd5e0;
+margin: 24px 0;
+}
+
+blockquote.note { border-left-color: #38b2ac; background: #e6fffa; color: #234e52; }
+blockquote.warning { border-left-color: #ed8936; background: #fffaf0; color: #7b341e; }
+blockquote.danger { border-left-color: #e53e3e; background: #fff5f5; color: #742a2a; }
+blockquote.success { border-left-color: #38a169; background: #f0fff4; color: #22543d; }
+
+@media print {
+body { font-size: 10pt; max-width: none; margin: 0; padding: 0; }
+a { color: #1a365d; }
+pre { font-size: 8.8pt; }
+nav#TOC { page-break-after: always; }
+h1, h2 { page-break-before: auto; }
+h1 { page-break-before: always; }
+h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
+}
+</style>
+</head>
+<body>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#oom-protect-project-constitution" id="toc-oom-protect-project-constitution">OOM-Protect — Project
+Constitution</a>
+<ul>
+<li><a href="#article-i-anti-bluff-testing-non-negotiable" id="toc-article-i-anti-bluff-testing-non-negotiable">Article I —
+Anti-Bluff Testing (Non-Negotiable)</a>
+<ul>
+<li><a href="#mandatory-anti-bluff-rituals" id="toc-mandatory-anti-bluff-rituals">Mandatory anti-bluff
+rituals</a></li>
+<li><a href="#examples-of-bluffs-that-are-forbidden" id="toc-examples-of-bluffs-that-are-forbidden">Examples of bluffs that
+are forbidden</a></li>
+</ul></li>
+<li><a href="#article-ii-idempotency-and-reversibility" id="toc-article-ii-idempotency-and-reversibility">Article II —
+Idempotency and Reversibility</a></li>
+<li><a href="#article-iii-documentation-parity" id="toc-article-iii-documentation-parity">Article III — Documentation
+Parity</a></li>
+<li><a href="#article-iv-observable-behavior-over-code-beauty" id="toc-article-iv-observable-behavior-over-code-beauty">Article IV —
+Observable Behavior Over Code Beauty</a></li>
+<li><a href="#article-v-multi-upstream-discipline" id="toc-article-v-multi-upstream-discipline">Article V — Multi-Upstream
+Discipline</a></li>
+<li><a href="#article-vi-submodule-constitutions" id="toc-article-vi-submodule-constitutions">Article VI — Submodule
+Constitutions</a></li>
+<li><a href="#amendment-process" id="toc-amendment-process">Amendment
+process</a></li>
+</ul></li>
+</ul>
+</nav>
+<section id="oom-protect-project-constitution" class="level1">
+<h1>OOM-Protect — Project Constitution</h1>
+<p>This document is the <strong>highest-authority charter</strong> for
+the OOM-Protect project and every submodule, tool, script, and document
+it contains. Every contributor — human or AI — MUST read and obey it.
+When this Constitution conflicts with any other guidance (CLAUDE.md,
+AGENTS.md, READMEs, tickets, ad-hoc requests), <strong>the Constitution
+wins</strong> unless the conflict is resolved by an explicit, documented
+amendment to this file.</p>
+<p>The CLAUDE.md and AGENTS.md files in this repository, and in every
+current and future submodule, MUST embed Article I (Anti-Bluff Testing)
+verbatim or by reference.</p>
+<hr />
+<section id="article-i-anti-bluff-testing-non-negotiable" class="level2">
+<h2>Article I — Anti-Bluff Testing (Non-Negotiable)</h2>
+<blockquote>
+<p><strong>A passing test or Challenge MUST prove that the product
+really works. A test that passes while the product is broken is a defect
+more serious than the original bug.</strong></p>
+</blockquote>
+<p>We were burned. Tests “passed”, Challenges “ran green”, and the
+product did not work. That is forbidden going forward.</p>
+<p>Concretely, every test and every Challenge MUST satisfy ALL of the
+following:</p>
+<ol type="1">
+<li><strong>Exercise the real artifact, not a stand-in.</strong> Unit
+tests may use stubs for <em>external</em> boundaries (the kernel, atop,
+the network). They MUST NOT stub the code under test. Integration tests
+and Challenges MUST run the actual built binary against real inputs and
+observe real outputs.</li>
+<li><strong>Assert observable outcomes, not internal state.</strong>
+Verify files exist on disk with the required content; verify exit codes;
+verify subprocess stdout/stderr; verify systemd units transition to
+expected states. “I called the function” is not an assertion.</li>
+<li><strong>Fail loudly when the feature is missing.</strong> A test
+that passes vacuously when its target code is deleted is a bluff. Every
+test MUST be one whose green status genuinely depends on the production
+code being correct. Use mutation-style spot checks: temporarily break
+the code and confirm the test goes red.</li>
+<li><strong>No <code>t.Skip</code>, no <code>pending</code>, no
+commented-out assertions, no <code>|| true</code>, no
+<code>--no-fail</code>, no swallowed exit codes.</strong> A test that
+cannot run is not a test. If a precondition is missing, the test MUST
+fail with a clear diagnostic, not silently pass.</li>
+<li><strong>Challenges MUST simulate the real failure mode.</strong> The
+point of a Challenge is to reproduce the production hazard the feature
+defends against. A memory-protection Challenge MUST allocate enough
+memory to trip the threshold; a CPU Challenge MUST burn enough CPU; a
+startup Challenge MUST actually start the daemon. Synthetic shortcuts
+that bypass the hazard are forbidden.</li>
+<li><strong>Every public feature has at least one Challenge.</strong> No
+feature ships without an end-to-end Challenge that an end user could
+reproduce by reading the script. If a feature cannot be exercised by a
+Challenge, it is not a feature — it is a fiction.</li>
+<li><strong>The full test+Challenge suite is part of the definition of
+done.</strong> A change is not complete until <code>make test</code> AND
+<code>make challenges</code> (or the equivalent) pass on a clean
+checkout, on the target host, with the same toolchain the user will
+use.</li>
+</ol>
+<section id="mandatory-anti-bluff-rituals" class="level3">
+<h3>Mandatory anti-bluff rituals</h3>
+<ul>
+<li><strong>Before declaring a task done</strong>, the contributor MUST
+run the relevant tests AND the relevant Challenges and paste the output
+(or a verifiable summary) in the change log.</li>
+<li><strong>Every PR / merge</strong> MUST list the Challenges exercised
+and their outcomes.</li>
+<li><strong>Each Challenge script</strong> MUST print, on success, what
+it verified — not just <code>OK</code>. Example:
+<code>OK: report file /var/log/oom-watch/reports/2026-04-30T14:23-memory.md exists, contains &#39;CRITICAL&#39;, and lists at least 5 PIDs</code>.
+A bare <code>OK</code> is forbidden.</li>
+<li><strong>Bluff audits</strong>: periodically (at least once per
+release) a contributor MUST temporarily break a representative
+production line and confirm the corresponding test goes red. If it stays
+green, that test is a bluff and MUST be rewritten before the release
+ships.</li>
+</ul>
+</section>
+<section id="examples-of-bluffs-that-are-forbidden" class="level3">
+<h3>Examples of bluffs that are forbidden</h3>
+<ul>
+<li>A unit test that calls <code>parseAtop(&quot;&quot;)</code> and asserts
+<code>err == nil</code> without inspecting the parsed value.</li>
+<li>A Challenge that runs the binary with <code>--help</code> and exits
+0, claiming the feature works.</li>
+<li>A test that asserts <code>len(reports) &gt;= 0</code> (always
+true).</li>
+<li>A test that mocks the function it is supposed to test.</li>
+<li>A <code>make test</code> target that pipes through
+<code>|| true</code>, swallowing real failures.</li>
+<li>A CI green badge produced by a job that didn’t actually execute the
+suite.</li>
+</ul>
+<hr />
+</section>
+</section>
+<section id="article-ii-idempotency-and-reversibility" class="level2">
+<h2>Article II — Idempotency and Reversibility</h2>
+<p>Every script that mutates the system MUST be:</p>
+<ol type="1">
+<li><strong>Idempotent.</strong> Re-running it MUST be safe and produce
+the same end state.</li>
+<li><strong>Reversible.</strong> It MUST back up anything it overwrites,
+print the rollback command, and offer an <code>--uninstall</code> or
+<code>--rollback DIR</code> mode.</li>
+<li><strong>Conservative on shared state.</strong> Never restart
+<code>systemd-logind</code>, never edit <code>/etc/fstab</code>, swap,
+GRUB, or anything that could prevent the next boot.</li>
+</ol>
+<p>These are non-negotiable for any tool in this repo, including new
+ones.</p>
+<hr />
+</section>
+<section id="article-iii-documentation-parity" class="level2">
+<h2>Article III — Documentation Parity</h2>
+<p>For every user-facing tool, the repository MUST contain:</p>
+<ol type="1">
+<li>A Markdown manual under <code>manuals/</code> or
+<code>docs/</code>.</li>
+<li>The same content rendered to standalone HTML (CSS embedded).</li>
+<li>The same content rendered to PDF.</li>
+</ol>
+<p><code>build-docs.sh</code> and <code>make docs</code> MUST produce
+all three from the Markdown source. Stale HTML/PDF is a bug.</p>
+<hr />
+</section>
+<section id="article-iv-observable-behavior-over-code-beauty" class="level2">
+<h2>Article IV — Observable Behavior Over Code Beauty</h2>
+<p>When in doubt, prefer code that emits clear, structured logs and
+writes legible artifacts on disk over code that is internally elegant
+but opaque. The user investigating a 3 a.m. incident will not read your
+structs; they will read your logs and your reports.</p>
+<hr />
+</section>
+<section id="article-v-multi-upstream-discipline" class="level2">
+<h2>Article V — Multi-Upstream Discipline</h2>
+<p>The project is mirrored to four Git upstreams (GitHub, GitLab,
+GitFlic, GitVerse). The <code>origin</code> remote is configured to push
+to all four. Every commit on <code>main</code> MUST be pushed to all
+four; partial mirrors are forbidden because contributors and CI on
+different remotes will diverge.</p>
+<hr />
+</section>
+<section id="article-vi-submodule-constitutions" class="level2">
+<h2>Article VI — Submodule Constitutions</h2>
+<p>Any submodule added to this repository MUST contain its own
+<code>Constitution.md</code>, <code>CLAUDE.md</code>, and
+<code>AGENTS.md</code>. The submodule’s Constitution MAY add rules but
+MUST NOT weaken Articles I–V of this Constitution. If a submodule lacks
+these files at the time of inclusion, the contributor adding the
+submodule MUST create them in the same commit.</p>
+<hr />
+</section>
+<section id="amendment-process" class="level2">
+<h2>Amendment process</h2>
+<p>This file is amended by an explicit commit whose message starts with
+<code>Constitution:</code> and which lists, in the body, the article
+changed and the rationale. No silent edits.</p>
+<hr />
+<p><em>Adopted 2026-04-30, in response to repeated bluff-test incidents
+and to the OOM kill of the systemd user-manager on host
+<code>nezha</code> on 2026-04-28.</em></p>
+</section>
+</section>
+</body>
+</html>
