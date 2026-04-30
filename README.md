@@ -14,7 +14,7 @@ born from the 2026-04-28 incident on host `nezha` where 60+ user processes
 were destroyed in a single second when the kernel OOM-killer SIGKILL'd the
 systemd user-manager itself. See `Crash_Report.md` for the full post-mortem.
 
-The toolkit has two moving parts:
+The toolkit has three moving parts:
 
 1. **`oom-hardening.sh`** — applies system-wide protection (the umbrella):
    `systemd-oomd`, cgroup limits on `user-.slice`, sysctls, logind power-key
@@ -22,9 +22,17 @@ The toolkit has two moving parts:
 2. **`oom-runner.sh`** — wraps individual workloads (the per-app limit):
    any command can be launched in its own bounded scope/service so a single
    runaway dies in isolation.
+3. **`oom-watch/`** — the monitoring daemon. A small Go service that uses
+   `atop` to sample system state every 10 s, evaluates a threshold ladder
+   (NOTICE → WARN → CRITICAL), and writes a detailed Markdown forensic
+   report **just before** thresholds breach so you have evidence at incident
+   time, not after the fact. Deploy with `sudo make oomwatch-deploy`. See
+   `manuals/oom-watch-deployment-guide.md` and
+   `manuals/oom-watch-runbook.md`.
 
-Use both together. The first sets the umbrella; the second sets the per-leaf
-bounds inside it.
+Use all three together. The first sets the umbrella; the second sets the
+per-leaf bounds inside it; the third writes forensic evidence the moment
+either is being stressed.
 
 ---
 
@@ -155,6 +163,16 @@ Each component has a full manual:
 - **`Crash_Report.md`** — what happened on 2026-04-28, why, and what to do.
 - **`manuals/oom-hardening-manual.md`** — every option, drop-in, tuning recipe.
 - **`manuals/oom-runner-manual.md`** — every option, preset, scenario.
+- **`manuals/oom-watch-manual.md`** — feature reference for the monitoring
+  daemon: every config key, severity ladder, report anatomy.
+- **`manuals/oom-watch-deployment-guide.md`** — install and verify the
+  daemon end-to-end. Includes ALT Linux specifics, a real session
+  walk-through, and the diagnostic-bundler procedure.
+- **`manuals/oom-watch-runbook.md`** — incident-response playbook. Every
+  issue we have hit in production or during deployment is documented with
+  one-command diagnosis and exact remediation. Read once; bookmark for
+  3 a.m.
+- **`reports/oom-watch-architecture.md`** — design decisions for the daemon.
 
 All three are also rendered as `.html` (standalone, embedded CSS) and `.pdf`
 (via weasyprint, A4 paged media). Re-render any time after editing:

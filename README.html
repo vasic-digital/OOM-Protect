@@ -281,7 +281,7 @@ Android build, MCP servers, IDE, browsers, terminals) were destroyed in
 a single second when the kernel OOM-killer SIGKILL’d the systemd
 user-manager itself. See <code>Crash_Report.md</code> for the full
 post-mortem.</p>
-<p>The toolkit has two moving parts:</p>
+<p>The toolkit has three moving parts:</p>
 <ol type="1">
 <li><strong><code>oom-hardening.sh</code></strong> — applies system-wide
 protection (the umbrella): <code>systemd-oomd</code>, cgroup limits on
@@ -290,9 +290,18 @@ retention.</li>
 <li><strong><code>oom-runner.sh</code></strong> — wraps individual
 workloads (the per-app limit): any command can be launched in its own
 bounded scope/service so a single runaway dies in isolation.</li>
+<li><strong><code>oom-watch/</code></strong> — the monitoring daemon. A
+small Go service that uses <code>atop</code> to sample system state
+every 10 s, evaluates a threshold ladder (NOTICE → WARN → CRITICAL), and
+writes a detailed Markdown forensic report <strong>just before</strong>
+thresholds breach so you have evidence at incident time, not after the
+fact. Deploy with <code>sudo make oomwatch-deploy</code>. See
+<code>manuals/oom-watch-deployment-guide.md</code> and
+<code>manuals/oom-watch-runbook.md</code>.</li>
 </ol>
-<p>Use both together. The first sets the umbrella; the second sets the
-per-leaf bounds inside it.</p>
+<p>Use all three together. The first sets the umbrella; the second sets
+the per-leaf bounds inside it; the third writes forensic evidence the
+moment either is being stressed.</p>
 <hr />
 </section>
 <section id="project-layout" class="level1">
@@ -577,6 +586,19 @@ CI/monitoring.</p>
 every option, drop-in, tuning recipe.</li>
 <li><strong><code>manuals/oom-runner-manual.md</code></strong> — every
 option, preset, scenario.</li>
+<li><strong><code>manuals/oom-watch-manual.md</code></strong> — feature
+reference for the monitoring daemon: every config key, severity ladder,
+report anatomy.</li>
+<li><strong><code>manuals/oom-watch-deployment-guide.md</code></strong>
+— install and verify the daemon end-to-end. Includes ALT Linux
+specifics, a real session walk-through, and the diagnostic-bundler
+procedure.</li>
+<li><strong><code>manuals/oom-watch-runbook.md</code></strong> —
+incident-response playbook. Every issue we have hit in production or
+during deployment is documented with one-command diagnosis and exact
+remediation. Read once; bookmark for 3 a.m.</li>
+<li><strong><code>reports/oom-watch-architecture.md</code></strong> —
+design decisions for the daemon.</li>
 </ul>
 <p>All three are also rendered as <code>.html</code> (standalone,
 embedded CSS) and <code>.pdf</code> (via weasyprint, A4 paged media).

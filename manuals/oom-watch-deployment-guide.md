@@ -41,15 +41,33 @@ sudo bash /path/to/OOM-Protect/oom-watch/scripts/install-and-verify.sh
 
 The script will refuse to proceed unless every prerequisite is satisfied. There are no silent skips.
 
-| Prerequisite | Why | Install hint (ALT Linux) |
+| Prerequisite | Why | Install hint per distro |
 |---|---|---|
-| Root or sudo | Writes to `/usr/local/sbin`, `/etc/oom-watch`, `/etc/systemd/system`, `/var/log/oom-watch`, `/var/lib/oom-watch` | `su -` or configure sudoers |
-| `atop` on PATH | The daemon's only data source. Without atop the daemon refuses to start. | `apt-get install atop` |
-| `systemctl` | The unit is managed by systemd. | included with systemd |
-| Go ≥ 1.22 | Only required if the `oom-watch/oomwatch` binary has not already been built. | `apt-get install golang` |
+| Root or sudo | Writes to `/usr/local/sbin`, `/etc/oom-watch`, `/etc/systemd/system`, `/var/log/oom-watch`, `/var/lib/oom-watch` | ALT: `su -` (root often not in sudoers — `make` auto-detects EUID 0). Debian/Ubuntu/RHEL: `sudo …` works |
+| `atop` on PATH | The daemon's only data source. Without atop the daemon refuses to start; this is intentional (no silent /proc fallbacks). | ALT: `apt-get install atop`. Debian/Ubuntu: `apt install atop`. RHEL/Fedora: `dnf install atop`. SUSE: `zypper install atop`. Verified version: 2.12.1 (Sep 2025) |
+| `systemctl` | The unit is managed by systemd. | Included with systemd; tested on systemd 258 (ALT 11) |
+| Linux kernel ≥ 5.15 | Pressure Stall Information (PSI) on `/proc/pressure/memory` is the strongest leading indicator of imminent OOM and a primary signal in the threshold engine. | All recent distros |
+| cgroup v2 unified hierarchy | The daemon reads `/sys/fs/cgroup/user.slice/user-<uid>.slice/memory.*` for the user-slice section of reports. cgroup v1 hosts produce empty for that section, otherwise work fine. | Default on most modern distros |
+| Go ≥ 1.22 | Only required if `oom-watch/oomwatch` has not already been built. | ALT: `apt-get install golang`. Debian/Ubuntu: `apt install golang-go`. Tested with Go 1.26.2 |
 | `make` | Drives the install target. | usually pre-installed |
 
 The script does **not** install atop or Go for you. Fixing prerequisites is intentionally a separate step from deployment so you can review what you're installing.
+
+### 2.1 ALT Linux specifics
+
+This project was developed and field-tested on **ALT Linux 11 "Salvia" (Sisyphus branch)**, kernel 6.12.61, systemd 258, atop 2.12.1. A few ALT-specific behaviours the deployer accommodates automatically:
+
+- **Root is not in sudoers** by default on ALT (a security choice — root has no need to authenticate to itself). Earlier versions of the Makefile blindly prepended `sudo` and bricked under `su -`. The current Makefile evaluates `SUDO := $(shell test "$$(id -u)" = "0" && echo "" || echo "sudo")` once at parse time, so the same `make oomwatch-deploy` works as both root (skips sudo) and a sudo-capable user (prepends it). Override with `make … SUDO="doas"` for distros using doas.
+- **systemd 258 directive forms.** `StartLimitIntervalSec` must live in `[Unit]` (older systemds tolerated `[Service]`); `ProtectControlGroups=read-only` is rejected (only `yes`/`no` accepted on this release). The shipped unit file is correct for systemd ≥ 230 and the comments call out the symptoms ("Unknown key … in section [Service]") if you ever see them in the journal.
+- **PSI present**, kernel 6.12 emits `/proc/pressure/{memory,cpu,io}` cleanly.
+
+### 2.2 Cross-UID repository note
+
+If the OOM-Protect checkout lives on a filesystem owned by a UID different from the one running the deployer (e.g. an external mount owned by your user, deployer run as root), Go's default VCS-stamping in `go build` triggers git's "dubious ownership" safety feature and the build fails with `error obtaining VCS status: exit status 128`.
+
+The deployer and Makefile pass `-buildvcs=false` to every `go build`, and `challenges/lib.sh` exports `GOFLAGS=-buildvcs=false` for every Challenge that builds a helper. The flag is zero-cost (we don't read the VCS stamp from the binary) and removes the entire failure class. You don't need to do anything; this section just explains why the flag is there if you encounter it.
+
+If you genuinely want VCS stamping, set `git config --global --add safe.directory /path/to/OOM-Protect` first and remove `-buildvcs=false` overrides — but there is no functional benefit.
 
 ---
 
@@ -241,6 +259,83 @@ sudo make oomwatch-diagnose
 
 ---
 
+## 6b. A real deployment session, end to end
+
+This section shows the deployment as it actually plays out on a fresh host, with sample output at each step. Use it as a sanity check while watching your own deploy.
+
+```bash
+# 1. Prerequisites (one-time per host)
+$ apt-get install atop                    # ALT Linux: atop 2.12.1+
+$ which atop && atop -V | head -1
+/usr/bin/atop
+Version: 2.12.1 - 2025/09/23 19:13:15
+
+# 2. Clone or update the repo (typical: ~/OOM-Protect)
+$ cd /path/to/OOM-Protect
+$ git pull --ff-only
+Already up to date.
+
+# 3. Deploy as root (or via sudo)
+$ make oomwatch-deploy
+== 1. Pre-flight ==
+[deploy] OK atop present: /usr/bin/atop (2.12.1)
+[deploy] OK systemd present: systemd 258 (258.5-alt1)
+
+== 2. Build + install ==
+[deploy] OK binary built: …/oom-watch/oomwatch
+[deploy] running 'make oomwatch-install' (idempotent)
+installed: /etc/oom-watch/config.json (from example)
+installed. Enable with: systemctl enable --now oom-watch.service
+[deploy] OK make oomwatch-install completed
+[deploy] OK post-install paths verified: binary, config, unit
+
+== 2b. Validate /etc/oom-watch/config.json ==
+[deploy] OK /etc/oom-watch/config.json passes -dry-run
+
+== 3. systemd: daemon-reload + reset-failed + enable + restart ==
+[deploy] OK reset-failed cleared (unit can start fresh)
+[deploy] service already enabled
+[deploy] OK service restarted (clean slate for verification)
+
+== 4. Waiting for unit to reach 'active' (timeout 30 s) ==
+[deploy] OK unit is active
+
+== 5. Recent journal ==
+… msg="oom-watch starting" version=dev interval_s=10 report_dir=/var/log/oom-watch/reports
+… msg="atop located" path=/usr/bin/atop
+[deploy] OK journal contains 'atop located' (daemon reached the sample loop)
+
+== 6. Waiting for first report (timeout 60 s) ==
+[deploy] no automatic report yet (host appears calm); requesting -one-shot diagnostic
+… msg="one-shot report written" path=/var/log/oom-watch/reports/2026-04-30T16-57-17Z-notice.md severity=NOTICE
+[deploy] OK first report on disk: …/2026-04-30T16-57-17Z-notice.md (23960 bytes)
+
+== Summary ==
+Unit:        active
+Binary:      -rwxr-xr-x root 4120181 /usr/local/sbin/oomwatch
+Config:      /etc/oom-watch/config.json
+Unit file:   /etc/systemd/system/oom-watch.service
+Reports dir: /var/log/oom-watch/reports/
+Last report: …/2026-04-30T16-57-17Z-notice.md (23960 bytes)
+Follow logs: journalctl -fu oom-watch.service
+[deploy] OK oom-watch is installed, active, and producing reports.
+
+# 4. Verify under real pressure (optional but recommended once per host)
+$ make challenges
+… [seven Challenges run] …
+challenges passed: 7 / 7
+```
+
+Total time: ~30 seconds for the deploy itself, plus ~60 seconds for `make challenges`. After that, the daemon is running, will sample every 10 seconds, and will write reports if any threshold breaches.
+
+### What "calm host" means
+
+If your host is comfortably under all thresholds at deploy time (typical idle state: 30–50 % memory used, swap untouched, PSI near zero, load < 1 per CPU), the deployer's step 6 will see no automatic report after 60 s and **force a `-one-shot` diagnostic** so we have proof on disk that the report-writing path works. That is **not a failure** — quiet IS the goal of this daemon. The forced one-shot lands as `<timestamp>-notice.md` regardless.
+
+After deployment, the daemon stays quiet until something genuinely starts going wrong. Tail `journalctl -fu oom-watch.service` to confirm it is iterating without errors; the absence of new reports is the success signal.
+
+---
+
 ## 7. Failure modes
 
 Every failure surfaces a specific error from the script (above the EXIT-trap diagnostic dump). The diagnostic dump always includes `systemctl status`, journal tail, config, unit file, and report directory listing.
@@ -311,6 +406,7 @@ The corresponding regression Challenge is `challenges/challenge-config-validatio
 
 ## See also
 
+- **`manuals/oom-watch-runbook.md`** — incident-response playbook. Every issue we have hit in production or during deployment is documented there with one-command diagnosis and exact remediation. Read it once now; bookmark for 3 a.m.
 - `manuals/oom-watch-manual.md` — full daemon documentation (config keys, severity ladder, threshold tuning, report anatomy).
-- `reports/oom-watch-architecture.md` — design decisions, including why the deployer validates with `-dry-run` before enabling.
+- `reports/oom-watch-architecture.md` — design decisions, including why the deployer validates with `-dry-run` before enabling and why the systemd sandbox is deliberately moderate.
 - `Constitution.md` — the project charter and Article I (anti-bluff testing).

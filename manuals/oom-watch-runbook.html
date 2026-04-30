@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="OOM-Protect maintainers" />
+  <meta name="dcterms.date" content="2026-04-30" />
+  <title>oom-watch — Incident-Response Runbook</title>
+  <style>
+
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ background-color: #f8f8f8; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ef2929; } 
+code span.an { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.at { color: #204a87; } 
+code span.bn { color: #0000cf; } 
+code span.cf { color: #204a87; font-weight: bold; } 
+code span.ch { color: #4e9a06; } 
+code span.cn { color: #8f5902; } 
+code span.co { color: #8f5902; font-style: italic; } 
+code span.cv { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.do { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.dt { color: #204a87; } 
+code span.dv { color: #0000cf; } 
+code span.er { color: #a40000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #0000cf; } 
+code span.fu { color: #204a87; font-weight: bold; } 
+code span.im { } 
+code span.in { color: #8f5902; font-weight: bold; font-style: italic; } 
+code span.kw { color: #204a87; font-weight: bold; } 
+code span.op { color: #ce5c00; font-weight: bold; } 
+code span.ot { color: #8f5902; } 
+code span.pp { color: #8f5902; font-style: italic; } 
+code span.sc { color: #ce5c00; font-weight: bold; } 
+code span.ss { color: #4e9a06; } 
+code span.st { color: #4e9a06; } 
+code span.va { color: #000000; } 
+code span.vs { color: #4e9a06; } 
+code span.wa { color: #8f5902; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+@page {
+size: A4;
+margin: 22mm 18mm 22mm 18mm;
+@bottom-center {
+content: counter(page) " / " counter(pages);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+@top-right {
+content: string(doctitle);
+font-family: "DejaVu Sans", sans-serif;
+font-size: 9pt;
+color: #888;
+}
+}
+html { font-size: 11pt; }
+body {
+font-family: "DejaVu Sans", "Liberation Sans", "Helvetica", sans-serif;
+line-height: 1.5;
+color: #1a1a1a;
+max-width: 920px;
+margin: 24px auto;
+padding: 0 18px 48px;
+background: #fff;
+hyphens: auto;
+}
+
+header.title-block {
+border-bottom: 2px solid #2b6cb0;
+padding-bottom: 12px;
+margin-bottom: 28px;
+}
+h1.title {
+font-size: 26pt;
+color: #1a365d;
+margin: 0 0 4px;
+string-set: doctitle content();
+}
+p.subtitle, p.author, p.date {
+margin: 2px 0;
+color: #555;
+font-size: 10.5pt;
+}
+
+h1, h2, h3, h4, h5, h6 {
+font-family: "DejaVu Sans", sans-serif;
+color: #1a365d;
+page-break-after: avoid;
+line-height: 1.25;
+}
+h1 { font-size: 20pt; border-bottom: 1px solid #cbd5e0; padding-bottom: 4px; margin-top: 32px; }
+h2 { font-size: 15pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; margin-top: 26px; }
+h3 { font-size: 13pt; margin-top: 22px; color: #2c5282; }
+h4 { font-size: 11.5pt; margin-top: 18px; color: #2c5282; }
+
+p { margin: 0.6em 0; }
+ul, ol { margin: 0.6em 0 0.6em 22px; padding: 0; }
+li { margin: 4px 0; }
+
+code {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 0.92em;
+background: #f1f5f9;
+color: #1a202c;
+padding: 1px 5px;
+border-radius: 3px;
+border: 1px solid #e2e8f0;
+}
+
+pre {
+font-family: "DejaVu Sans Mono", "Menlo", "Consolas", monospace;
+font-size: 9.5pt;
+background: #1a202c;
+color: #f7fafc;
+padding: 12px 14px;
+border-radius: 6px;
+overflow-x: auto;
+page-break-inside: avoid;
+line-height: 1.45;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+pre code {
+background: transparent;
+color: inherit;
+border: none;
+padding: 0;
+font-size: inherit;
+}
+
+blockquote {
+margin: 0.8em 0;
+padding: 8px 14px;
+border-left: 4px solid #4299e1;
+background: #ebf8ff;
+color: #2a4365;
+border-radius: 0 4px 4px 0;
+}
+
+table {
+border-collapse: collapse;
+width: 100%;
+margin: 1em 0;
+font-size: 10pt;
+page-break-inside: avoid;
+}
+th, td {
+border: 1px solid #cbd5e0;
+padding: 6px 9px;
+text-align: left;
+vertical-align: top;
+}
+thead th {
+background: #2c5282;
+color: #fff;
+font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #f7fafc; }
+
+a { color: #2b6cb0; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+nav#TOC {
+background: #f7fafc;
+border: 1px solid #e2e8f0;
+border-radius: 6px;
+padding: 14px 22px 14px 14px;
+margin: 16px 0 28px;
+page-break-after: always;
+}
+nav#TOC > ul { list-style: none; margin-left: 6px; padding: 0; }
+nav#TOC ul ul { margin-left: 18px; }
+nav#TOC > h2 { margin-top: 0; border: none; font-size: 13pt; }
+nav#TOC li { margin: 3px 0; }
+
+hr {
+border: none;
+border-top: 1px solid #cbd5e0;
+margin: 24px 0;
+}
+
+blockquote.note { border-left-color: #38b2ac; background: #e6fffa; color: #234e52; }
+blockquote.warning { border-left-color: #ed8936; background: #fffaf0; color: #7b341e; }
+blockquote.danger { border-left-color: #e53e3e; background: #fff5f5; color: #742a2a; }
+blockquote.success { border-left-color: #38a169; background: #f0fff4; color: #22543d; }
+
+@media print {
+body { font-size: 10pt; max-width: none; margin: 0; padding: 0; }
+a { color: #1a365d; }
+pre { font-size: 8.8pt; }
+nav#TOC { page-break-after: always; }
+h1, h2 { page-break-before: auto; }
+h1 { page-break-before: always; }
+h1:first-of-type, header.title-block + h1 { page-break-before: avoid; }
+}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">oom-watch — Incident-Response Runbook</h1>
+<p class="subtitle">What to do when issues recur</p>
+<p class="author">OOM-Protect maintainers</p>
+<p class="date">2026-04-30</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#oom-watch-incident-response-runbook" id="toc-oom-watch-incident-response-runbook">oom-watch —
+Incident-Response Runbook</a>
+<ul>
+<li><a href="#quick-triage-decision-tree" id="toc-quick-triage-decision-tree">Quick triage decision tree</a></li>
+<li><a href="#production-oom-cascade" id="toc-production-oom-cascade">§1
+Production OOM cascade</a></li>
+<li><a href="#bad-config-codeexited-status2" id="toc-bad-config-codeexited-status2">§2 Bad config
+(<code>code=exited, status=2</code>)</a></li>
+<li><a href="#restart-throttle-start-request-repeated-too-quickly" id="toc-restart-throttle-start-request-repeated-too-quickly">§3 Restart
+throttle (<code>Start request repeated too quickly</code>)</a></li>
+<li><a href="#atop-missing" id="toc-atop-missing">§4 atop
+missing</a></li>
+<li><a href="#sandbox-blocking-atop-atop-sample-failed-atop-exit--1" id="toc-sandbox-blocking-atop-atop-sample-failed-atop-exit--1">§5
+Sandbox blocking atop
+(<code>atop sample failed: atop exit -1</code>)</a></li>
+<li><a href="#daemon-running-no-reports-host-is-calm-expected" id="toc-daemon-running-no-reports-host-is-calm-expected">§6 Daemon
+running, no reports (host is calm — expected)</a></li>
+<li><a href="#daemon-running-no-reports-thresholds-wrong" id="toc-daemon-running-no-reports-thresholds-wrong">§7 Daemon running,
+no reports (thresholds wrong)</a></li>
+<li><a href="#reports-filling-the-disk" id="toc-reports-filling-the-disk">§8 Reports filling the disk</a></li>
+<li><a href="#cross-uid-build-error-obtaining-vcs-status-exit-status-128" id="toc-cross-uid-build-error-obtaining-vcs-status-exit-status-128">§9
+Cross-UID build
+(<code>error obtaining VCS status: exit status 128</code>)</a></li>
+<li><a href="#systemd-directive-drift-unknown-key-startlimitintervalsec-in-section-service" id="toc-systemd-directive-drift-unknown-key-startlimitintervalsec-in-section-service">§10
+systemd directive drift
+(<code>Unknown key &#39;StartLimitIntervalSec&#39; in section [Service]</code>)</a></li>
+<li><a href="#stale-installed-config-auto-remediation-triggered" id="toc-stale-installed-config-auto-remediation-triggered">§11 Stale
+installed config (auto-remediation triggered)</a></li>
+<li><a href="#anything-else-use-the-diagnostic-bundler" id="toc-anything-else-use-the-diagnostic-bundler">§12 Anything else —
+use the diagnostic bundler</a></li>
+<li><a href="#re-deployment-after-upgrade" id="toc-re-deployment-after-upgrade">§13 Re-deployment after
+upgrade</a></li>
+<li><a href="#definition-of-done-for-any-incident" id="toc-definition-of-done-for-any-incident">Definition of done for any
+incident</a></li>
+<li><a href="#see-also" id="toc-see-also">See also</a></li>
+</ul></li>
+</ul>
+</nav>
+<section id="oom-watch-incident-response-runbook" class="level1">
+<h1>oom-watch — Incident-Response Runbook</h1>
+<p>This document is the <strong>on-call playbook</strong> for
+OOM-Protect. Every scenario it covers is one we have hit in production
+or during deployment. Each section follows the same shape so you can
+scan fast at 3 a.m.:</p>
+<ul>
+<li><strong>Symptom</strong> — what you observe.</li>
+<li><strong>One-command diagnosis</strong> — confirms the root
+cause.</li>
+<li><strong>Remediation</strong> — exact recovery sequence.</li>
+<li><strong>Won’t recur because</strong> — the regression test or
+Challenge that locks the fix in.</li>
+</ul>
+<p>Keep this document open while operating the daemon. The Constitution
+(<code>Constitution.md</code>) requires that every regression-class
+incident here also has a corresponding Challenge in
+<code>challenges/</code> — if you hit something not listed, file an
+issue and write the regression test before declaring it fixed.</p>
+<hr />
+<section id="quick-triage-decision-tree" class="level2">
+<h2>Quick triage decision tree</h2>
+<pre><code>Did the system OOM-cascade (user session died, processes destroyed)?
+  └── §1  Production OOM cascade
+
+Otherwise, is the oom-watch daemon healthy?
+  ├── systemctl is-active oom-watch.service ⇒ failed
+  │     ├── code=exited, status=2  → §2  Bad config
+  │     ├── &#39;Start request repeated too quickly&#39;  → §3  Restart throttle
+  │     ├── code=exited, status=1, journal: &#39;atop binary not found&#39;  → §4  atop missing
+  │     └── &#39;atop sample failed: atop exit -1&#39;  → §5  Sandbox blocking
+  ├── systemctl is-active oom-watch.service ⇒ active(running) but no reports
+  │     └── §6  Daemon running, host calm (expected) OR §7 thresholds wrong
+  └── /var/log/oom-watch/reports/ filling disk
+        └── §8  Report rotation
+
+Did a deployment fail mid-step?
+  ├── &#39;error obtaining VCS status&#39;  → §9  Cross-UID build
+  ├── &#39;Unknown key … in section [Service]&#39;  → §10 systemd directive drift
+  ├── &#39;_comment&#39; in error  → §11 Stale installed config
+  └── any other failure  → §12 Use the diagnostic bundler</code></pre>
+<p>For everything not listed, run
+<code>sudo make oomwatch-diagnose</code> and read the resulting
+<code>/tmp/oomwatch-diagnose-&lt;ts&gt;.log</code>. The 16 sections
+cover ~95 % of failure modes.</p>
+<hr />
+</section>
+<section id="production-oom-cascade" class="level2">
+<h2>§1 Production OOM cascade</h2>
+<p><strong>Symptom.</strong> Your session evaporates: terminals close,
+browser windows vanish, IDE quits silently, you may be returned to the
+display manager / login screen. After re-login:
+<code>journalctl -b -1</code> shows the prior boot’s
+<code>oom-watch</code> reports timestamps in the seconds <em>before</em>
+the cascade, plus <code>dmesg</code> shows the kernel OOM-killer’s
+victim list.</p>
+<p><strong>One-command diagnosis.</strong></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-t</span> /var/log/oom-watch/reports/<span class="pp">*</span>-critical.md <span class="dv">2</span><span class="op">&gt;</span>/dev/null <span class="kw">|</span> <span class="fu">head</span> <span class="at">-1</span> <span class="kw">|</span> <span class="fu">xargs</span> less</span></code></pre></div>
+<p>The most recent CRITICAL report — written <strong>before</strong> the
+cascade — contains the top processes, <code>/proc/meminfo</code>, PSI
+scores, swap state, user-slice cgroup memory, and a 200-line journal
+tail. That is the forensic ground truth.</p>
+<p><strong>Remediation.</strong></p>
+<ol type="1">
+<li>Read the CRITICAL report. Identify the top-mem process: usually one
+runaway (browser tab leak, JVM heap overrun, build farm, model training,
+etc.).</li>
+<li>Run <code>make verify</code> to confirm the umbrella (oomd + cgroup
+limits + sysctls from <code>oom-hardening.sh</code>) is still
+applied.</li>
+<li>Run <code>make verify-stress</code> (or the lighter
+<code>make oommemhog-build &amp;&amp; bash challenges/challenge-real-pressure.sh</code>)
+to confirm pressure detection still fires WARN.</li>
+<li>If the runaway was a known wrappable workload, run it under
+<code>oom-runner.sh</code> going forward
+(e.g. <code>oom-runner --preset claude -- claude</code>). The per-leaf
+cgroup means the runaway dies in isolation.</li>
+</ol>
+<p><strong>Won’t recur because.</strong></p>
+<ul>
+<li><code>oom-hardening.sh</code> puts a 56 G <code>MemoryMax</code> and
+48 G <code>MemoryHigh</code> cap on <code>user-.slice</code> so the
+user-manager itself can no longer be the OOM victim.</li>
+<li><code>systemd-oomd</code> (configured by the same script) kills leaf
+cgroups before the kernel OOM-killer is reached, with
+<code>SwapUsedLimit=80%</code> and
+<code>MemoryPressureLimit=50%</code>.</li>
+<li><code>oom-watch</code> writes a forensic CRITICAL report when
+<code>MemAvailable</code> drops below 5 % or PSI memFull avg10 exceeds
+30 %, <strong>before</strong> the kill happens, so the next cascade
+leaves real evidence even if it does evade the umbrella.</li>
+</ul>
+<p>If the cascade still happens despite all three layers, the umbrella
+was misconfigured or unloaded — re-run <code>make install</code> to
+reapply <code>oom-hardening.sh</code>.</p>
+<hr />
+</section>
+<section id="bad-config-codeexited-status2" class="level2">
+<h2>§2 Bad config (<code>code=exited, status=2</code>)</h2>
+<p><strong>Symptom.</strong>
+<code>systemctl status oom-watch.service</code> shows
+<code>Active: failed (Result: exit-code)</code>, exit code 2, and the
+journal contains
+<code>config: parse /etc/oom-watch/config.json: …</code> followed by a
+specific error.</p>
+<p><strong>One-command diagnosis.</strong></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">/usr/local/sbin/oomwatch</span> <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-dry-run</span></span></code></pre></div>
+<p>Returns exit 0 with <code>config OK</code> if the file is valid;
+otherwise prints the exact validator error (unknown field, threshold
+ordering violation, interval out of range, etc.) and exits 2.</p>
+<p><strong>Remediation.</strong></p>
+<p>Two paths, in order of preference:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># A. Auto-remediate via the deployer (preserves your config in a backup):</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-deploy</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 2b will detect the broken config, copy it to</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co"># /etc/oom-watch/config.json.broken.&lt;timestamp&gt;, install the shipped</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co"># example, re-validate, and restart the unit. If you had custom</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co"># thresholds, recover them from the backup file.</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co"># B. Manual edit (when the validator&#39;s complaint is something you can</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="co"># fix in place — e.g. swapping warn and critical values):</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> nano /etc/oom-watch/config.json</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-dry-run</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl reset-failed oom-watch.service</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart oom-watch.service</span></code></pre></div>
+<p><strong>Won’t recur because.</strong></p>
+<ul>
+<li><code>challenges/challenge-config-validation.sh</code> asserts the
+<strong>shipped</strong> <code>oom-watch.example.json</code> itself
+passes <code>-dry-run</code>, so a future commit that re-introduces an
+unknown field or bad value cannot land without the test going red.</li>
+<li><code>install-and-verify.sh</code> step 2b validates the
+<strong>installed</strong> config before asking systemd to start the
+unit — a bad edit produces the precise validator error, not a cryptic
+systemd exit code.</li>
+</ul>
+<hr />
+</section>
+<section id="restart-throttle-start-request-repeated-too-quickly" class="level2">
+<h2>§3 Restart throttle
+(<code>Start request repeated too quickly</code>)</h2>
+<p><strong>Symptom.</strong>
+<code>systemctl status oom-watch.service</code> shows
+<code>Failed with result &#39;exit-code&#39;</code> and the journal contains
+<code>Start request repeated too quickly</code>. The unit refuses to
+start even after you fix the underlying cause.</p>
+<p><strong>One-command diagnosis.</strong></p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">-u</span> oom-watch.service <span class="at">-n</span> 5 <span class="at">--no-pager</span> <span class="kw">|</span> <span class="fu">grep</span> <span class="at">-i</span> <span class="st">&#39;restart counter&#39;</span></span></code></pre></div>
+<p>A counter of ≥ 3 within the <code>StartLimitIntervalSec=60s</code>
+window means systemd has given up restarting the unit until you reset
+it.</p>
+<p><strong>Remediation.</strong></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl reset-failed oom-watch.service</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart oom-watch.service</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl status oom-watch.service</span></code></pre></div>
+<p><strong>Won’t recur because.</strong></p>
+<ul>
+<li><code>install-and-verify.sh</code> step 3 calls
+<code>systemctl reset-failed</code> <strong>before</strong> every
+restart, so the deployer cannot itself be blocked by a prior
+throttle.</li>
+<li>The unit’s <code>StartLimitBurst=3</code> is intentionally low:
+three failed starts in a minute means <em>something is wrong with the
+daemon, not transient</em>, and an operator needs to investigate. The
+restart limit is a feature, not a bug.</li>
+</ul>
+<hr />
+</section>
+<section id="atop-missing" class="level2">
+<h2>§4 atop missing</h2>
+<p><strong>Symptom.</strong> Daemon exits immediately with
+<code>atop binary not found in PATH</code>.
+<code>systemctl status</code> shows code=1.</p>
+<p><strong>One-command diagnosis.</strong></p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="bu">command</span> <span class="at">-v</span> atop <span class="kw">||</span> <span class="bu">echo</span> <span class="st">&quot;atop NOT installed&quot;</span></span></code></pre></div>
+<p><strong>Remediation.</strong></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ALT Linux:</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt-get install atop</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Debian/Ubuntu:</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> apt install atop</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="co"># RHEL/Fedora:</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> dnf install atop</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co"># After install:</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart oom-watch.service</span></code></pre></div>
+<p><strong>Won’t recur because.</strong></p>
+<ul>
+<li><code>challenges/challenge-no-atop.sh</code> runs the daemon under
+an empty PATH and asserts non-zero exit with <code>atop</code> and
+<code>not found</code> in stderr — if a future change ever silently
+degraded to a /proc fallback, this Challenge fails immediately.</li>
+<li>The systemd unit does NOT have <code>Wants=atop.service</code>,
+intentionally — atop is invoked as a one-shot subprocess; we don’t
+depend on atop’s own daemon being up.</li>
+</ul>
+<hr />
+</section>
+<section id="sandbox-blocking-atop-atop-sample-failed-atop-exit--1" class="level2">
+<h2>§5 Sandbox blocking atop
+(<code>atop sample failed: atop exit -1</code>)</h2>
+<p><strong>Symptom.</strong> Daemon is <code>active (running)</code> but
+every sample fails. Journal shows
+<code>atop sample failed err=&quot;atop exit -1: &quot;</code> (note the empty
+stderr after the colon — characteristic of signal kill).</p>
+<p><strong>One-command diagnosis.</strong></p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> dmesg <span class="at">--since</span> <span class="st">&quot;5 minutes ago&quot;</span> <span class="kw">|</span> <span class="fu">grep</span> <span class="at">-iE</span> <span class="st">&#39;audit.*seccomp|denied|killed&#39;</span></span></code></pre></div>
+<p>A line mentioning <code>comm=&quot;atop&quot;</code> plus <code>seccomp</code>
+or <code>denied</code> confirms the kernel killed atop because of a
+sandbox restriction. If <code>dmesg</code> is empty, the cgroup
+OOM-killed atop instead — check <code>Memory:</code> in
+<code>systemctl status oom-watch.service</code> (peak vs. max).</p>
+<p><strong>Remediation.</strong></p>
+<p>If the cause is seccomp / capabilities:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Pull the current unit which has the relaxed sandbox:</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /path/to/OOM-Protect <span class="kw">&amp;&amp;</span> <span class="fu">git</span> pull</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-install</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl daemon-reload</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart oom-watch.service</span></code></pre></div>
+<p>If the cause is the cgroup memory cap (rare — the daemon plus atop
+typically peak around 50 MiB), bump <code>MemoryMax</code> in
+<code>/etc/systemd/system/oom-watch.service.d/local.conf</code>:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[Service]</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="dt">MemoryMax</span><span class="ot">=</span><span class="st">256M</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="dt">MemoryHigh</span><span class="ot">=</span><span class="st">128M</span></span></code></pre></div>
+<p>Then
+<code>sudo systemctl daemon-reload &amp;&amp; sudo systemctl restart oom-watch.service</code>.</p>
+<p><strong>Won’t recur because.</strong></p>
+<ul>
+<li>The shipped unit file’s comments explicitly call out which
+directives were dropped (<code>SystemCallFilter</code>,
+<code>RestrictNamespaces</code>, <code>CapabilityBoundingSet</code>,
+<code>SystemCallArchitectures</code>) and the symptom
+(<code>atop exit -1:</code> with empty stderr) — a future contributor
+re-enabling them sees the warning before redeploying.</li>
+<li><code>challenges/challenge-real-atop.sh</code> runs the actual atop
+binary against the daemon and asserts a non-zero memory ratio + a real
+process name appears in the report, so a sandbox change that silently
+breaks atop fails the Challenge.</li>
+</ul>
+<hr />
+</section>
+<section id="daemon-running-no-reports-host-is-calm-expected" class="level2">
+<h2>§6 Daemon running, no reports (host is calm — expected)</h2>
+<p><strong>Symptom.</strong> Daemon healthy for hours/days,
+<code>/var/log/oom-watch/reports/</code> empty (or only a single startup
+<code>*-notice.md</code> from <code>-one-shot</code>).</p>
+<p><strong>This is correct behaviour.</strong> A monitoring daemon
+writing nothing means nothing has crossed a threshold. The defaults
+(<code>memory_used_ratio_warn=0.90</code>,
+<code>memory_used_ratio_critical=0.95</code>,
+<code>psi_mem_full_avg10_warn=10.0</code>) are tuned to fire only when
+the host is genuinely under stress.</p>
+<p><strong>Confirm the daemon is iterating.</strong></p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">-u</span> oom-watch.service <span class="at">--since</span> <span class="st">&#39;1 hour ago&#39;</span> <span class="at">--no-pager</span> <span class="kw">|</span> <span class="fu">grep</span> <span class="at">-E</span> <span class="st">&#39;verdict|incident&#39;</span> <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-5</span></span></code></pre></div>
+<p>You should see periodic <code>verdict severity=OK</code> lines if
+log_level is <code>debug</code>, or no lines if <code>info</code> (the
+default — verdicts at OK level are not logged to avoid spam). Either
+way, an absence of <code>atop sample failed</code> or
+<code>incident write failed</code> errors means it is healthy.</p>
+<p><strong>Force a diagnostic to prove the report path
+works.</strong></p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-one-shot</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-lt</span> /var/log/oom-watch/reports/ <span class="kw">|</span> <span class="fu">head</span> <span class="at">-3</span></span></code></pre></div>
+<p>Produces a NOTICE-level forensic report on demand.</p>
+<hr />
+</section>
+<section id="daemon-running-no-reports-thresholds-wrong" class="level2">
+<h2>§7 Daemon running, no reports (thresholds wrong)</h2>
+<p><strong>Symptom.</strong> You believe the host has been under stress
+(you saw a near-OOM, or atop interactive shows pressure) but no report
+ever fires.</p>
+<p><strong>One-command diagnosis.</strong></p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-print-config</span></span></code></pre></div>
+<p>Compare the displayed <code>thresholds.*</code> values to the
+conditions you expected to trip. A
+<code>memory_used_ratio_warn=0.95</code> tuning, for example, will not
+fire until the host is at 95 % memory, which on a 64 GiB box means
+leaving only 3 GiB available — by then PSI is usually screaming.</p>
+<p><strong>Remediation.</strong> Lower the relevant threshold.
+Recommended starting values for tighter detection:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;thresholds&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;memory_used_ratio_notice&quot;</span><span class="fu">:</span>   <span class="fl">0.70</span><span class="fu">,</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;memory_used_ratio_warn&quot;</span><span class="fu">:</span>     <span class="fl">0.85</span><span class="fu">,</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;memory_used_ratio_critical&quot;</span><span class="fu">:</span> <span class="fl">0.92</span><span class="fu">,</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;psi_mem_full_avg10_warn&quot;</span><span class="fu">:</span>    <span class="fl">5.0</span><span class="fu">,</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;psi_mem_full_avg10_critical&quot;</span><span class="fu">:</span> <span class="fl">20.0</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Validate then restart:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-dry-run</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart oom-watch.service</span></code></pre></div>
+<p><strong>Won’t recur because.</strong> Tuning is a per-host
+operational choice, not a regression. The ordering invariants
+(<code>notice ≤ warn ≤ critical</code>) are enforced by
+<code>config.Validate()</code> and tested in
+<code>internal/config/config_test.go</code>.</p>
+<hr />
+</section>
+<section id="reports-filling-the-disk" class="level2">
+<h2>§8 Reports filling the disk</h2>
+<p><strong>Symptom.</strong> <code>df /var/log</code> approaches full;
+<code>find /var/log/oom-watch/reports -name &#39;*.md&#39; | wc -l</code>
+returns a large number.</p>
+<p><strong>One-command diagnosis.</strong></p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">du</span> <span class="at">-sh</span> /var/log/oom-watch/reports <span class="kw">&amp;&amp;</span> <span class="fu">find</span> /var/log/oom-watch/reports <span class="at">-name</span> <span class="st">&#39;*.md&#39;</span> <span class="at">-mtime</span> +30 <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span></code></pre></div>
+<p><strong>Remediation.</strong> Cron a cleanup (default policy: keep 30
+days):</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> install <span class="at">-m</span> 0755 /dev/stdin /etc/cron.daily/oom-watch-cleanup <span class="op">&lt;&lt;&#39;EOF&#39;</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="st">#!/bin/sh</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="st">find /var/log/oom-watch/reports -type f -name &#39;*.md&#39; -mtime +30 -delete</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="st">find /var/log/oom-watch/reports -type f -name &#39;*.md.gz&#39; -mtime +90 -delete</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="op">EOF</span></span></code></pre></div>
+<p>Or a logrotate snippet at
+<code>/etc/logrotate.d/oom-watch</code>:</p>
+<pre><code>/var/log/oom-watch/reports/*.md {
+    daily
+    rotate 30
+    compress
+    missingok
+    notifempty
+    nocreate
+    nosharedscripts
+}</code></pre>
+<p><strong>Won’t recur because.</strong> The daemon does not currently
+rotate; this is intentional (the daemon’s job is to write reports, not
+manage them). Adding rotation is a per-host operations choice.</p>
+<hr />
+</section>
+<section id="cross-uid-build-error-obtaining-vcs-status-exit-status-128" class="level2">
+<h2>§9 Cross-UID build
+(<code>error obtaining VCS status: exit status 128</code>)</h2>
+<p><strong>Symptom.</strong> <code>make oomwatch-build</code> or
+<code>make oomwatch-deploy</code> fails at the <code>go build</code>
+step with the literal error message above. Common when the repo lives on
+an external mount owned by your user but you ran <code>make</code> as
+root.</p>
+<p><strong>One-command diagnosis.</strong></p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-ld</span> <span class="va">$(</span><span class="bu">pwd</span><span class="va">)</span> <span class="kw">&amp;&amp;</span> <span class="fu">id</span></span></code></pre></div>
+<p>If the directory’s owner UID does not match <code>id -u</code>, you
+have the cross-UID configuration that triggers git’s
+<code>dubious ownership</code> safety feature.</p>
+<p><strong>Remediation.</strong> Already fixed in code. Pull the
+latest:</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> pull</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-deploy</span></code></pre></div>
+<p>The Makefile passes <code>-buildvcs=false</code> to every
+<code>go build</code>; <code>challenges/lib.sh</code> exports
+<code>GOFLAGS=-buildvcs=false</code> for every Challenge. Both are
+belt-and-suspenders against this whole class of failure.</p>
+<p>If you genuinely want VCS stamping (you almost never do):</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> config <span class="at">--global</span> <span class="at">--add</span> safe.directory /path/to/OOM-Protect</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Then remove -buildvcs=false from Makefile + lib.sh.</span></span></code></pre></div>
+<p><strong>Won’t recur because.</strong> The flag is in committed code;
+the only way to reintroduce the failure is to actively delete it.</p>
+<hr />
+</section>
+<section id="systemd-directive-drift-unknown-key-startlimitintervalsec-in-section-service" class="level2">
+<h2>§10 systemd directive drift
+(<code>Unknown key &#39;StartLimitIntervalSec&#39; in section [Service]</code>)</h2>
+<p><strong>Symptom.</strong> Journal contains:</p>
+<ul>
+<li><code>Unknown key &#39;StartLimitIntervalSec&#39; in section [Service], ignoring</code></li>
+<li><code>Failed to parse ProtectControlGroups=read-only, ignoring: Invalid argument</code></li>
+<li>(or similar warnings about a directive systemd does not
+recognise)</li>
+</ul>
+<p>The warnings are non-fatal — systemd ignores the offending directive
+and proceeds — but the unit may behave incorrectly (no restart limit,
+unprotected cgroups, etc.) until fixed.</p>
+<p><strong>One-command diagnosis.</strong></p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ex">systemd-analyze</span> verify /etc/systemd/system/oom-watch.service</span></code></pre></div>
+<p>Outputs nothing if the unit is clean; otherwise prints the line
+numbers and reasons.</p>
+<p><strong>Remediation.</strong> Pull the current unit (the shipped
+version is correct for systemd ≥ 230 and ≤ current latest):</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> pull</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-install</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl daemon-reload</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl reset-failed oom-watch.service</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart oom-watch.service</span></code></pre></div>
+<p><strong>Won’t recur because.</strong> The unit file’s inline comments
+name the symptom for each previously-broken directive
+(<code>StartLimitIntervalSec</code>, <code>ProtectControlGroups</code>)
+so a future contributor moving them back sees the warning.
+<code>systemd-analyze verify</code> is part of the pre-merge
+checklist.</p>
+<hr />
+</section>
+<section id="stale-installed-config-auto-remediation-triggered" class="level2">
+<h2>§11 Stale installed config (auto-remediation triggered)</h2>
+<p><strong>Symptom.</strong> <code>make oomwatch-deploy</code> step 2b
+prints:</p>
+<pre><code>[deploy] ERROR INSTALLED CONFIG IS INVALID …
+[deploy] auto-remediation: backing up the broken file to /etc/oom-watch/config.json.broken.&lt;ts&gt;
+[deploy] auto-remediation: installing shipped example over the broken config
+[deploy] OK fresh example installed and passes -dry-run
+[deploy] WARN if you had custom thresholds, re-apply them from the backup</code></pre>
+<p>You had custom thresholds in <code>/etc/oom-watch/config.json</code>
+and the deployer replaced the file because validation failed (probably
+after you edited it manually and made a typo, or the example shipped
+with an unknown field that the parser rejected).</p>
+<p><strong>Remediation.</strong> Diff the backup against the new config
+and re-apply your customisations:</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> diff /etc/oom-watch/config.json.broken.<span class="pp">*</span> /etc/oom-watch/config.json <span class="kw">|</span> <span class="fu">less</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> nano /etc/oom-watch/config.json    <span class="co"># cherry-pick your custom thresholds</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-dry-run</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart oom-watch.service</span></code></pre></div>
+<p>Keep the <code>.broken.&lt;ts&gt;</code> file until you have
+re-applied everything, then optionally delete it:</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> rm /etc/oom-watch/config.json.broken.<span class="pp">*</span></span></code></pre></div>
+<p><strong>Won’t recur because.</strong> Backup + replace is the
+<em>recovery</em> path, not a bug. The reason the config was invalid is
+what to chase — usually a deliberate edit that introduced a typo (caught
+by <code>DisallowUnknownFields</code>), or an upgrade from a version
+with a different schema. Validate before saving in future:</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> nano /etc/oom-watch/config.json</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> /usr/local/sbin/oomwatch <span class="at">-config</span> /etc/oom-watch/config.json <span class="at">-dry-run</span> <span class="dt">\</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>    <span class="kw">||</span> <span class="bu">echo</span> <span class="st">&quot;STOP — fix before restarting daemon&quot;</span></span></code></pre></div>
+<hr />
+</section>
+<section id="anything-else-use-the-diagnostic-bundler" class="level2">
+<h2>§12 Anything else — use the diagnostic bundler</h2>
+<p>For any failure not covered above, capture every relevant piece of
+state in a single log file:</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-diagnose</span></code></pre></div>
+<p>Produces <code>/tmp/oomwatch-diagnose-&lt;timestamp&gt;.log</code>
+with 16 sections: timestamp, host, tool versions, repo state, shipped
+example SHA, installed paths, full installed config, dry-run verdict,
+unit state, full unit file, last 200 journal lines, reports directory
+listing, live atop sample, full <code>make oomwatch-deploy</code> run
+with all step headers, post-deploy unit state, post-deploy journal.</p>
+<p>Read it yourself first — most issues are obvious from §6 (config) +
+§7 (dry-run) + §10 (journal) + §13 (deploy steps). If you need help,
+paste the file’s contents into your support channel.</p>
+<p>The bundler is documented in detail in
+<strong><code>oom-watch-deployment-guide.md</code> §6a</strong>.</p>
+<hr />
+</section>
+<section id="re-deployment-after-upgrade" class="level2">
+<h2>§13 Re-deployment after upgrade</h2>
+<p>When new commits land upstream (new features, sandbox tweaks,
+threshold tuning, parser fixes for new atop versions), re-deploy
+with:</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> /path/to/OOM-Protect</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> make oomwatch-deploy SUDO=<span class="st">&quot;&quot;</span>    <span class="co"># if running as root via su</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="co"># or:</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> <span class="at">-E</span> make oomwatch-deploy</span></code></pre></div>
+<p>For a fully automated update-and-redeploy pipeline:</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> bash oom-watch/scripts/install-and-verify.sh <span class="at">--pull</span> <span class="at">--rebuild</span></span></code></pre></div>
+<p>The deployer is idempotent: re-running it converges the host to the
+deployed state regardless of starting point. Custom configs are
+preserved (via auto-remediate’s backup if validation fails); the unit is
+restarted cleanly with a <code>reset-failed</code> so prior throttle
+state is cleared.</p>
+<p>After every upgrade, run:</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> challenges</span></code></pre></div>
+<p>and confirm <code>7 / 7 PASS</code>. A failed Challenge after an
+upgrade is the canary for a regression — do not declare the upgrade done
+until they all pass on the target host.</p>
+<hr />
+</section>
+<section id="definition-of-done-for-any-incident" class="level2">
+<h2>Definition of done for any incident</h2>
+<p>Per Constitution Article I, an incident is not closed until:</p>
+<ol type="1">
+<li>The remediation is verified — the daemon is
+<code>active (running)</code>, journal is clean, a fresh report (or
+forced <code>-one-shot</code>) appears on disk.</li>
+<li>If the incident corresponds to a class of bug that could recur, a
+Challenge in <code>challenges/</code> (or a unit test in
+<code>oom-watch/internal/.../*_test.go</code>) reproduces the failure
+and asserts the fix. The Constitution forbids “fixed but not
+tested.”</li>
+<li>The relevant runbook section above is updated if the symptom or
+remediation changed.</li>
+</ol>
+<p>The runbook is a living document — when you hit a scenario it doesn’t
+cover, write it up before declaring done.</p>
+<hr />
+</section>
+<section id="see-also" class="level2">
+<h2>See also</h2>
+<ul>
+<li><strong><code>oom-watch-manual.md</code></strong> — feature
+reference: every config key, severity ladder, report anatomy, threshold
+tuning recipes.</li>
+<li><strong><code>oom-watch-deployment-guide.md</code></strong> —
+install procedure, prerequisite list, full deployer step-by-step, the
+diagnostic bundler.</li>
+<li><strong><code>reports/oom-watch-architecture.md</code></strong> —
+design rationale for every directive choice in the systemd unit, the
+parser, the threshold engine.</li>
+<li><strong><code>Constitution.md</code></strong> — Article I
+(anti-bluff testing), Article II (idempotency), Article III (doc
+parity).</li>
+<li><strong><code>reports/Crash_Report.md</code></strong> — the original
+2026-04-28 incident this entire toolkit answers.</li>
+</ul>
+</section>
+</section>
+</body>
+</html>
