@@ -51,7 +51,8 @@ CHALLENGES   := $(ROOT)/challenges/run-all.sh
         docs docs-clean test list status logs kill clean-units \
         presets package clean all check \
         oomwatch oomwatch-build oomwatch-test oomwatch-vet \
-        oomwatch-install oomwatch-clean challenges
+        oomwatch-install oomwatch-deploy oomwatch-clean \
+        oommemhog-build challenges
 
 # -----------------------------------------------------------------------------
 # Help
@@ -90,7 +91,9 @@ help:
 	@printf "    make oomwatch-test        go vet + go test (anti-bluff unit suite)\n"
 	@printf "    make challenges           Run E2E Challenges (anti-bluff)\n"
 	@printf "    make oomwatch-install     Install binary, config skeleton, systemd unit (sudo)\n"
-	@printf "    make oomwatch-clean       Remove built binary\n"
+	@printf "    make oomwatch-deploy      Install + enable + start + verify (one shot, sudo)\n"
+	@printf "    make oommemhog-build      Build the in-tree memory hog used by real-pressure Challenge\n"
+	@printf "    make oomwatch-clean       Remove built binaries\n"
 
 # -----------------------------------------------------------------------------
 # Apply / verify
@@ -241,3 +244,9 @@ oomwatch-install: $(OOMWATCH_BIN)
 
 oomwatch-clean:
 	@rm -f $(OOMWATCH_BIN) $(OOMWATCH_DIR)/oommemhog
+
+# One-shot installer + verifier. Wraps oomwatch-install with a systemd
+# enable/start + active-state poll + first-report check, with full
+# diagnostics dump on any failure. Idempotent. Safe to re-run.
+oomwatch-deploy:
+	@bash $(OOMWATCH_DIR)/scripts/install-and-verify.sh
