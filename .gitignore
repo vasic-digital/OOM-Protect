@@ -1,5 +1,6 @@
-# Built oom-watch binary
+# Built oom-watch binaries
 oom-watch/oomwatch
+oom-watch/oommemhog
 
 # Generated tarballs
 oom-toolkit-*.tar.gz

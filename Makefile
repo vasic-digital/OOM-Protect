@@ -203,6 +203,12 @@ $(OOMWATCH_BIN): $(shell find $(OOMWATCH_DIR) -name '*.go' -not -name '*_test.go
 	@cd $(OOMWATCH_DIR) && go build -o oomwatch ./cmd/oomwatch
 	@printf "$(G)built:$(C) $(OOMWATCH_BIN)\n"
 
+# In-tree memory hog used by challenge-real-pressure.sh; bounded at 16 GiB / 5min.
+oommemhog-build:
+	@printf "$(B)Building oommemhog (real-pressure test driver)...$(C)\n"
+	@cd $(OOMWATCH_DIR) && go build -o oommemhog ./cmd/oommemhog
+	@printf "$(G)built:$(C) $(OOMWATCH_DIR)/oommemhog\n"
+
 oomwatch-vet:
 	@cd $(OOMWATCH_DIR) && go vet ./...
 	@printf "$(G)go vet:$(C) clean\n"
@@ -210,7 +216,7 @@ oomwatch-vet:
 oomwatch-test: oomwatch-vet
 	@cd $(OOMWATCH_DIR) && go test -count=1 ./...
 
-challenges: oomwatch-build
+challenges: oomwatch-build oommemhog-build
 	@bash $(CHALLENGES)
 
 oomwatch-install: $(OOMWATCH_BIN)
@@ -228,4 +234,4 @@ oomwatch-install: $(OOMWATCH_BIN)
 	@printf "$(G)installed.$(C) Enable with: sudo systemctl enable --now oom-watch.service\n"
 
 oomwatch-clean:
-	@rm -f $(OOMWATCH_BIN)
+	@rm -f $(OOMWATCH_BIN) $(OOMWATCH_DIR)/oommemhog

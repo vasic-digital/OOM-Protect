@@ -162,6 +162,28 @@ sudo systemctl restart oom-watch
 journalctl -fu oom-watch
 ```
 
+## Real-pressure validation (Challenge harness)
+
+The repository ships a self-contained memory hog at `oom-watch/cmd/oommemhog/` and an end-to-end Challenge `challenges/challenge-real-pressure.sh` that exercises the entire detection pipeline against actual host pressure:
+
+```bash
+make oommemhog-build        # build the in-tree allocator
+bash challenges/challenge-real-pressure.sh
+```
+
+`oommemhog` allocates a bounded amount of memory (capped at 16 GiB / 5 min hold) and **touches every 4 KiB page** so MemAvailable actually drops — without that, Linux's zero-page CoW would defeat the test. The Challenge:
+
+1. Reads current host MemTotal / MemAvailable.
+2. Sets thresholds dynamically (warn = current+5%, critical = current+10%) so the test triggers regardless of how much memory is currently in use.
+3. Computes target = min(20% of available, 6 GiB).
+4. Starts `oomwatch` in continuous mode with a unique sandbox config.
+5. Runs `oommemhog` with a unique label.
+6. Asserts a WARN-or-CRITICAL report was written, that it lists `oommemhog` in top-mem, and that the `/proc/meminfo` capture inside the report shows MemAvailable dropped vs. the pre-test reading.
+
+This is the strongest anti-bluff guarantee in the repo: a parser regression that returned `MemAvailable=0` would pass fixture-tests but fail this Challenge because the report's MemAvailable would not show the expected drop.
+
+`systemd-oomd` (when configured by `oom-hardening.sh`) is the safety backstop: any runaway gets killed at the cgroup level long before the host can stall.
+
 ## Tuning
 
 - **Lower `interval_seconds`** if you frequently miss fast-rising leaks (default 10s usually catches them).

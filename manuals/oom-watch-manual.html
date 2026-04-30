@@ -272,6 +272,8 @@ cooldown</a></li>
 of a report</a></li>
 <li><a href="#operational-tasks" id="toc-operational-tasks">Operational
 tasks</a></li>
+<li><a href="#real-pressure-validation-challenge-harness" id="toc-real-pressure-validation-challenge-harness">Real-pressure
+validation (Challenge harness)</a></li>
 <li><a href="#tuning" id="toc-tuning">Tuning</a></li>
 <li><a href="#atop-versions-and-the-per-thread-prm-quirk" id="toc-atop-versions-and-the-per-thread-prm-quirk">atop versions and
 the per-thread PRM quirk</a></li>
@@ -595,6 +597,40 @@ never observable.</p>
 <span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl status oom-watch</span>
 <span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="fu">sudo</span> systemctl restart oom-watch</span>
 <span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="ex">journalctl</span> <span class="at">-fu</span> oom-watch</span></code></pre></div>
+</section>
+<section id="real-pressure-validation-challenge-harness" class="level2">
+<h2>Real-pressure validation (Challenge harness)</h2>
+<p>The repository ships a self-contained memory hog at
+<code>oom-watch/cmd/oommemhog/</code> and an end-to-end Challenge
+<code>challenges/challenge-real-pressure.sh</code> that exercises the
+entire detection pipeline against actual host pressure:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> oommemhog-build        <span class="co"># build the in-tree allocator</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">bash</span> challenges/challenge-real-pressure.sh</span></code></pre></div>
+<p><code>oommemhog</code> allocates a bounded amount of memory (capped
+at 16 GiB / 5 min hold) and <strong>touches every 4 KiB page</strong> so
+MemAvailable actually drops — without that, Linux’s zero-page CoW would
+defeat the test. The Challenge:</p>
+<ol type="1">
+<li>Reads current host MemTotal / MemAvailable.</li>
+<li>Sets thresholds dynamically (warn = current+5%, critical =
+current+10%) so the test triggers regardless of how much memory is
+currently in use.</li>
+<li>Computes target = min(20% of available, 6 GiB).</li>
+<li>Starts <code>oomwatch</code> in continuous mode with a unique
+sandbox config.</li>
+<li>Runs <code>oommemhog</code> with a unique label.</li>
+<li>Asserts a WARN-or-CRITICAL report was written, that it lists
+<code>oommemhog</code> in top-mem, and that the
+<code>/proc/meminfo</code> capture inside the report shows MemAvailable
+dropped vs. the pre-test reading.</li>
+</ol>
+<p>This is the strongest anti-bluff guarantee in the repo: a parser
+regression that returned <code>MemAvailable=0</code> would pass
+fixture-tests but fail this Challenge because the report’s MemAvailable
+would not show the expected drop.</p>
+<p><code>systemd-oomd</code> (when configured by
+<code>oom-hardening.sh</code>) is the safety backstop: any runaway gets
+killed at the cgroup level long before the host can stall.</p>
 </section>
 <section id="tuning" class="level2">
 <h2>Tuning</h2>

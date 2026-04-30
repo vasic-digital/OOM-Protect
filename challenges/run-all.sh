@@ -19,6 +19,7 @@ challenges=(
     "$here/challenge-one-shot-report.sh"
     "$here/challenge-memory-pressure.sh"
     "$here/challenge-real-atop.sh"
+    "$here/challenge-real-pressure.sh"
     "$here/challenge-tests-are-not-bluffs.sh"
 )
 
