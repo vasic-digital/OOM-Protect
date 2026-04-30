@@ -47,12 +47,34 @@ ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectKernelLogs=yes
 RestrictRealtime=yes
-RestrictNamespaces=yes
 LockPersonality=yes
 RestrictSUIDSGID=yes
-SystemCallArchitectures=native
-SystemCallFilter=@system-service
-CapabilityBoundingSet=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
+
+# NOT enabled (atop compatibility):
+#
+#   RestrictNamespaces=yes        — atop reads /proc/<pid>/ns/* on some
+#                                   hosts to attribute namespaces; this
+#                                   directive can block it.
+#   SystemCallArchitectures=native — couples to the seccomp filter below.
+#   SystemCallFilter=...          — atop occasionally invokes syscalls
+#                                   outside @system-service (bpf,
+#                                   perf_event_open, quotactl on some
+#                                   builds). systemd kills with SIGSYS
+#                                   when a non-allowed syscall is made,
+#                                   producing 'atop exit -1: ' (signal
+#                                   kill, empty stderr) in the daemon log.
+#   CapabilityBoundingSet=...     — atop running as root benefits from
+#                                   the full capability set for /proc
+#                                   reads across containers and namespaces.
+#
+# These are defence-in-depth on a process that is already root and
+# already cgroup-bounded; the security value is small and the
+# fragility cost is large. The cgroup MemoryMax/TasksMax and the
+# OOMScoreAdjust/ProtectSystem directives above are the load-bearing
+# protections. If you re-enable any of these, run
+#   make oomwatch-deploy
+# and watch journalctl -u oom-watch.service for 'atop exit -1' (signal
+# kill — sandbox blocked something) before deploying widely.
 
 # Prevent oom-watch from being itself OOM-killed before it can write a report.
 OOMScoreAdjust=-500
