@@ -13,6 +13,17 @@
 
 set -Eeuo pipefail
 
+# Disable Go's VCS stamping for every 'go build' / 'go test' invocation
+# launched by any Challenge. The repo may live on a filesystem owned by
+# a UID different from the one running the Challenge (typical: external
+# drive owned by user 1000, Challenge run as root). On such layouts git
+# refuses to operate ('dubious ownership'), and 'go build' fails with
+# 'error obtaining VCS status: exit status 128'. We do not read the
+# stamp anywhere in the produced binaries, so disabling it is a
+# zero-risk, zero-cost belt-and-suspenders against this whole class of
+# failure. Append rather than overwrite so a caller's own GOFLAGS wins.
+export GOFLAGS="${GOFLAGS:-} -buildvcs=false"
+
 if [[ -t 1 ]]; then
     G=$'\033[32m'; Y=$'\033[33m'; R=$'\033[31m'; B=$'\033[1m'; C=$'\033[0m'
 else
