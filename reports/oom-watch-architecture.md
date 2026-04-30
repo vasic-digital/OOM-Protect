@@ -69,6 +69,15 @@ JSON has zero ambiguity (no Norway problem, no significant whitespace), is in th
 
 Acyclic dependencies. `snapshot.Snapshot` has a `Verdict` field of type `monitor.Verdict`. If `monitor` then imported `snapshot` to call `Capture`, we'd have a cycle. The cleanest fix is to make `monitor` declare the *callback shape* and have `cmd/oomwatch/main.go` wire `snapshot.Capture` and `report.WriteMarkdown` together.
 
+### Why filter PRM at the display layer instead of the parser
+
+atop 2.x emits one PRM row per kernel thread; non-leader rows duplicate the parent's RSize (because threads share memory) and would otherwise drown out every real process in the top-N list. The fix lives in `snapshot.topProcesses`, not in the parser, for two reasons:
+
+1. **Forensic completeness.** A future report (e.g. per-thread CPU breakdown) may want every PRM row. Discarding non-leaders during parse is information loss; discarding them during display is reversible.
+2. **Version safety.** atop 1.x does not emit the leader flag. The parser sets `IsLeader=true` as a default, so ancient atop hosts still produce useful top-mem tables instead of empty ones — a parser-time filter would silently drop everything.
+
+Tests: `TestParse_RealFixture` asserts `IsLeader` is decoded correctly for `y`, `n`, and old-style (no flag) rows. `TestTopProcesses_FiltersNonLeaders` asserts the snapshot drops non-leaders before they reach the report. `challenge-real-atop.sh` asserts no PID appears more than once in the top-mem table when running real atop on the host.
+
 ### Why "best-effort" snapshot capture
 
 A perfect-or-nothing snapshot would miss the most important reports — the ones produced under degraded conditions where /proc/pressure is unreadable or journalctl times out. A report with 8 of 10 sections + a `Capture errors` section that names the missing two is far more useful than no report at all. Tests enforce this: `TestCapture_PartialFailure` asserts the snapshot is non-nil and `Errors` lists the missing files.

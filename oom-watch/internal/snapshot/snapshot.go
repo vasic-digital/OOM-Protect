@@ -171,15 +171,24 @@ func (s *Snapshot) runJournalctl(ctx context.Context, argv []string) string {
 	return string(out)
 }
 
-// topProcesses sorts atop's PRM by RSize desc and PRC by some-CPU-proxy. We
-// keep it simple: PRC.Raw[0] is interpreted as % CPU when populated, else 0.
-// The point of "top" lists in the report is forensic ranking, not precision.
+// topProcesses sorts atop's PRM by RSize desc and PRC by some-CPU-proxy.
+//
+// PRM filtering: atop 2.x emits ONE PRM row per kernel thread; non-leader
+// threads duplicate the parent's RSize because they share its address space.
+// A 100-thread JVM would otherwise drown out every other process in the
+// top-N list. We keep only thread-group leader rows here. atop versions that
+// do not emit the leader flag set IsLeader=true on every row, so this filter
+// is a no-op there (lossless fallback). The parser keeps every row in the
+// Sample for callers that genuinely want per-thread breakdowns.
 func topProcesses(s *atop.Sample, n int) (mem, cpu []ProcessLine) {
 	if s == nil {
 		return
 	}
 	memList := make([]ProcessLine, 0, len(s.PRM))
 	for _, p := range s.PRM {
+		if !p.IsLeader {
+			continue
+		}
 		memList = append(memList, ProcessLine{
 			PID: p.PID, Cmd: p.Cmd, State: p.State,
 			RSize: p.RSize, VSize: p.VSize, Source: "atop-PRM",

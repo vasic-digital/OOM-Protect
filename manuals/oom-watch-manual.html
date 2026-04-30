@@ -273,6 +273,8 @@ of a report</a></li>
 <li><a href="#operational-tasks" id="toc-operational-tasks">Operational
 tasks</a></li>
 <li><a href="#tuning" id="toc-tuning">Tuning</a></li>
+<li><a href="#atop-versions-and-the-per-thread-prm-quirk" id="toc-atop-versions-and-the-per-thread-prm-quirk">atop versions and
+the per-thread PRM quirk</a></li>
 <li><a href="#failure-modes-and-recovery" id="toc-failure-modes-and-recovery">Failure modes and recovery</a></li>
 <li><a href="#integration-with-the-rest-of-oom-protect" id="toc-integration-with-the-rest-of-oom-protect">Integration with the
 rest of OOM-Protect</a></li>
@@ -609,6 +611,26 @@ with chronic memory pressure; a value of 10% means tasks were fully
 stalled on memory &gt;10% of the last 10 seconds, which is already
 user-visible.</li>
 </ul>
+</section>
+<section id="atop-versions-and-the-per-thread-prm-quirk" class="level2">
+<h2>atop versions and the per-thread PRM quirk</h2>
+<p><code>oom-watch</code> was developed and field-validated against atop
+<strong>2.12.1</strong> (Sep 2025). Earlier 2.x releases work too. atop
+1.x is not regularly tested; the daemon falls back gracefully but
+threading detail is lost.</p>
+<p><strong>atop 2.x emits one PRM row per kernel thread.</strong> A
+multi-threaded process (JVM, browser tab, modern Python with
+multiprocessing) appears as N rows that all share the parent’s RSize
+because threads share an address space. atop adds a thread-group-leader
+flag (<code>y</code>/<code>n</code>) at field index 13 of the PRM tail;
+oom-watch decodes it into <code>PRM.IsLeader</code> and the report’s
+“Top processes by resident memory” table filters by it. Without this
+filter a 100-thread JVM would drown out every other process in the top-N
+list.</p>
+<p>The parser preserves all PRM rows (leader and non-leader) in
+<code>Sample.PRM</code> so future per-thread reports are possible; only
+the <em>display</em> layer filters. atop 1.x rows lacking the flag
+default <code>IsLeader=true</code> for lossless back-compat.</p>
 </section>
 <section id="failure-modes-and-recovery" class="level2">
 <h2>Failure modes and recovery</h2>

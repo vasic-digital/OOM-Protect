@@ -174,11 +174,22 @@ type PRC struct {
 
 // PRM is one process line under the PRM (memory) label.
 //
-// Field positions after the common header and after (cmd) state:
-//   pagesize vsize rsize pgshared pgnonshared pgswapped pgswapped_total
-//   minorflt majorflt vexec vlibs vdata vstack pgsharedres ...
+// Field positions after the common header and after (cmd) state (atop 2.x):
 //
-// We expose the four most useful fields as typed values; the rest sit in Raw.
+//	[0] pagesize    [1] vsize       [2] rsize         [3] pgshared
+//	[4] pgnonshared [5] pgswapped   [6] pgswapped_tot [7] minorflt
+//	[8] majorflt    [9] vexec       [10] vlibs        [11] vdata
+//	[12] vstack/tgid (atop 2.10+ uses this slot for tgid in newer fields)
+//	[13] is-thread-group-leader ('y' or 'n')
+//	[14..] additional accounting fields (varies by atop version)
+//
+// IsLeader is true when atop reports this row as the thread-group leader. On
+// hosts running atop 2.x, multi-threaded processes (JVMs, browsers, etc.)
+// emit ONE PRM row per thread; only the leader row's RSize/VSize represent
+// the process's true address-space footprint. Non-leader rows duplicate the
+// parent's RSize because threads share memory. Filter by IsLeader at display
+// time to avoid hundreds of false-duplicate rows. Older atop versions that
+// do not emit the flag leave IsLeader == true (lossless fallback).
 type PRM struct {
 	PID       int
 	Cmd       string
@@ -187,6 +198,7 @@ type PRM struct {
 	VSize     int64 // pages of virtual memory
 	RSize     int64 // pages of resident memory
 	PgShared  int64
+	IsLeader  bool
 	Raw       []string
 }
 
@@ -575,7 +587,9 @@ func parsePRM(rest string) (*PRM, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := &PRM{PID: pid, Cmd: cmd, State: state, Raw: tail}
+	// Default IsLeader=true for older atop versions that don't emit the flag —
+	// we don't want to silently drop every PRM row on those hosts.
+	p := &PRM{PID: pid, Cmd: cmd, State: state, IsLeader: true, Raw: tail}
 	if len(tail) >= 1 {
 		p.PageSize, _ = strconv.ParseInt(tail[0], 10, 64)
 	}
@@ -587,6 +601,15 @@ func parsePRM(rest string) (*PRM, error) {
 	}
 	if len(tail) >= 4 {
 		p.PgShared, _ = strconv.ParseInt(tail[3], 10, 64)
+	}
+	// atop 2.x emits a 'y' / 'n' thread-group-leader flag at tail[13].
+	if len(tail) >= 14 {
+		switch tail[13] {
+		case "y":
+			p.IsLeader = true
+		case "n":
+			p.IsLeader = false
+		}
 	}
 	return p, nil
 }

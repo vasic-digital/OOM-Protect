@@ -210,6 +210,8 @@ YAML</a></li>
 <li><a href="#why-an-onincident-callback-instead-of-monitor-importing-snapshot" id="toc-why-an-onincident-callback-instead-of-monitor-importing-snapshot">Why
 an <code>OnIncident</code> callback instead of monitor importing
 snapshot</a></li>
+<li><a href="#why-filter-prm-at-the-display-layer-instead-of-the-parser" id="toc-why-filter-prm-at-the-display-layer-instead-of-the-parser">Why
+filter PRM at the display layer instead of the parser</a></li>
 <li><a href="#why-best-effort-snapshot-capture" id="toc-why-best-effort-snapshot-capture">Why “best-effort” snapshot
 capture</a></li>
 <li><a href="#why-atomic-writes" id="toc-why-atomic-writes">Why atomic
@@ -323,6 +325,31 @@ snapshot</h3>
 <code>monitor</code> declare the <em>callback shape</em> and have
 <code>cmd/oomwatch/main.go</code> wire <code>snapshot.Capture</code> and
 <code>report.WriteMarkdown</code> together.</p>
+</section>
+<section id="why-filter-prm-at-the-display-layer-instead-of-the-parser" class="level3">
+<h3>Why filter PRM at the display layer instead of the parser</h3>
+<p>atop 2.x emits one PRM row per kernel thread; non-leader rows
+duplicate the parent’s RSize (because threads share memory) and would
+otherwise drown out every real process in the top-N list. The fix lives
+in <code>snapshot.topProcesses</code>, not in the parser, for two
+reasons:</p>
+<ol type="1">
+<li><strong>Forensic completeness.</strong> A future report
+(e.g. per-thread CPU breakdown) may want every PRM row. Discarding
+non-leaders during parse is information loss; discarding them during
+display is reversible.</li>
+<li><strong>Version safety.</strong> atop 1.x does not emit the leader
+flag. The parser sets <code>IsLeader=true</code> as a default, so
+ancient atop hosts still produce useful top-mem tables instead of empty
+ones — a parser-time filter would silently drop everything.</li>
+</ol>
+<p>Tests: <code>TestParse_RealFixture</code> asserts
+<code>IsLeader</code> is decoded correctly for <code>y</code>,
+<code>n</code>, and old-style (no flag) rows.
+<code>TestTopProcesses_FiltersNonLeaders</code> asserts the snapshot
+drops non-leaders before they reach the report.
+<code>challenge-real-atop.sh</code> asserts no PID appears more than
+once in the top-mem table when running real atop on the host.</p>
 </section>
 <section id="why-best-effort-snapshot-capture" class="level3">
 <h3>Why “best-effort” snapshot capture</h3>

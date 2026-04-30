@@ -168,6 +168,14 @@ journalctl -fu oom-watch
 - **Raise `memory_used_ratio_warn`** if you run sustained-high-memory workloads and don't want a report every minute. The CRITICAL level should stay near 0.95 because that's where the kernel starts swapping aggressively and PSI rises.
 - **Raise `psi_mem_full_avg10_warn`** on hosts with chronic memory pressure; a value of 10% means tasks were fully stalled on memory >10% of the last 10 seconds, which is already user-visible.
 
+## atop versions and the per-thread PRM quirk
+
+`oom-watch` was developed and field-validated against atop **2.12.1** (Sep 2025). Earlier 2.x releases work too. atop 1.x is not regularly tested; the daemon falls back gracefully but threading detail is lost.
+
+**atop 2.x emits one PRM row per kernel thread.** A multi-threaded process (JVM, browser tab, modern Python with multiprocessing) appears as N rows that all share the parent's RSize because threads share an address space. atop adds a thread-group-leader flag (`y`/`n`) at field index 13 of the PRM tail; oom-watch decodes it into `PRM.IsLeader` and the report's "Top processes by resident memory" table filters by it. Without this filter a 100-thread JVM would drown out every other process in the top-N list.
+
+The parser preserves all PRM rows (leader and non-leader) in `Sample.PRM` so future per-thread reports are possible; only the *display* layer filters. atop 1.x rows lacking the flag default `IsLeader=true` for lossless back-compat.
+
 ## Failure modes and recovery
 
 | Symptom | Cause | Fix |

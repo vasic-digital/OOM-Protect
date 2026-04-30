@@ -84,11 +84,44 @@ func TestParse_RealFixture(t *testing.T) {
 			if p.RSize != 7000000 {
 				t.Errorf("PRM PID 5678 RSize = %d, want 7000000", p.RSize)
 			}
+			// Old-style row (14 trailing fields, no y/n at index 13).
+			// IsLeader must default to true so we don't silently drop atop 1.x rows.
+			if !p.IsLeader {
+				t.Error("PRM PID 5678 IsLeader = false, want true (default for old-style rows)")
+			}
 			foundChromium = true
 		}
 	}
 	if !foundChromium {
 		t.Error("did not find PRM entry for PID 5678 (chromium with spaces)")
+	}
+
+	// Atop 2.x style rows: leader flag must be parsed from tail[13].
+	// Anti-bluff: if the parser ignores the flag, jvm-thread-A would
+	// IsLeader=true and the snapshot filter would not protect us.
+	var jvmLeader, jvmThreadA, jvmThreadB *PRM
+	for i := range s2.PRM {
+		switch s2.PRM[i].PID {
+		case 9100:
+			jvmLeader = &s2.PRM[i]
+		case 9101:
+			jvmThreadA = &s2.PRM[i]
+		case 9102:
+			jvmThreadB = &s2.PRM[i]
+		}
+	}
+	if jvmLeader == nil || jvmThreadA == nil || jvmThreadB == nil {
+		t.Fatalf("expected PIDs 9100/9101/9102 in PRM, got leader=%v thA=%v thB=%v",
+			jvmLeader, jvmThreadA, jvmThreadB)
+	}
+	if !jvmLeader.IsLeader {
+		t.Error("PID 9100 IsLeader = false, want true (row has 'y' at tail[13])")
+	}
+	if jvmThreadA.IsLeader {
+		t.Error("PID 9101 IsLeader = true, want false (row has 'n' at tail[13])")
+	}
+	if jvmThreadB.IsLeader {
+		t.Error("PID 9102 IsLeader = true, want false (row has 'n' at tail[13])")
 	}
 
 	// Swap pressure also visible: free swap drops from 3.5M pages to 800K.

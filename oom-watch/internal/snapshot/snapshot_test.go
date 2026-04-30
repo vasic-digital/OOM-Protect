@@ -53,9 +53,9 @@ func TestCapture_FakeProc(t *testing.T) {
 	sample := &atop.Sample{
 		MEM: &atop.MEM{PhysPages: 4_000_000, AvailPages: 100_000},
 		PRM: []atop.PRM{
-			{PID: 1, Cmd: "small", RSize: 100},
-			{PID: 2, Cmd: "biggest", RSize: 50_000},
-			{PID: 3, Cmd: "medium", RSize: 10_000},
+			{PID: 1, Cmd: "small", RSize: 100, IsLeader: true},
+			{PID: 2, Cmd: "biggest", RSize: 50_000, IsLeader: true},
+			{PID: 3, Cmd: "medium", RSize: 10_000, IsLeader: true},
 		},
 		PRC: []atop.PRC{{PID: 2, Cmd: "biggest", State: "R"}},
 	}
@@ -89,6 +89,41 @@ func TestCapture_FakeProc(t *testing.T) {
 	}
 	if snap.TopByMemory[1].PID != 3 {
 		t.Errorf("expected medium second, got %+v", snap.TopByMemory[1])
+	}
+}
+
+// TestTopProcesses_FiltersNonLeaders: atop 2.x emits one PRM row per kernel
+// thread; non-leader threads inherit the parent's RSize and would otherwise
+// drown out every real process in the top-N. Anti-bluff: this test was added
+// after running real atop 2.12 produced a top-mem table where the same
+// 8-GiB Java process appeared 11 times; the production code change (filter
+// by PRM.IsLeader) was made first, then this test locks the contract in.
+func TestTopProcesses_FiltersNonLeaders(t *testing.T) {
+	t.Parallel()
+	sample := &atop.Sample{
+		PRM: []atop.PRM{
+			{PID: 9100, Cmd: "jvm-leader", RSize: 7_000_000, IsLeader: true},
+			{PID: 9101, Cmd: "jvm-thread-A", RSize: 7_000_000, IsLeader: false},
+			{PID: 9102, Cmd: "jvm-thread-B", RSize: 7_000_000, IsLeader: false},
+			{PID: 9103, Cmd: "jvm-thread-C", RSize: 7_000_000, IsLeader: false},
+			{PID: 4242, Cmd: "browser", RSize: 1_500_000, IsLeader: true},
+			{PID: 100, Cmd: "old-atop-no-flag", RSize: 500_000, IsLeader: true},
+		},
+	}
+	mem, _ := topProcesses(sample, 20)
+	if len(mem) != 3 {
+		t.Fatalf("expected exactly 3 leaders in top-mem (9100, 4242, 100); got %d: %+v", len(mem), mem)
+	}
+	if mem[0].PID != 9100 || mem[0].Cmd != "jvm-leader" {
+		t.Errorf("rank-1 should be jvm-leader (9100), got %+v", mem[0])
+	}
+	if mem[1].PID != 4242 || mem[1].Cmd != "browser" {
+		t.Errorf("rank-2 should be browser (4242), got %+v", mem[1])
+	}
+	for _, m := range mem {
+		if m.PID == 9101 || m.PID == 9102 || m.PID == 9103 {
+			t.Errorf("non-leader PID %d leaked into top list: %+v", m.PID, m)
+		}
 	}
 }
 
