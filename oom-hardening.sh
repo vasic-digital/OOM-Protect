@@ -57,6 +57,7 @@ readonly -a MANAGED_FILES=(
     "systemd/logind.conf.d/10-no-poweroff.conf|0644"
     "systemd/coredump.conf.d/50-keep.conf|0644"
     "sysctl.d/99-mem.conf|0644"
+    "security/limits.d/99-nproc-elastic.conf|0644"
 )
 
 # ---------- output helpers -----------------------------------------------------
@@ -94,9 +95,11 @@ content_for() {
     "systemd/oomd.conf.d/50-defaults.conf")
         cat <<'EOF'
 [OOM]
-SwapUsedLimit=80%
-DefaultMemoryPressureLimit=50%
-DefaultMemoryPressureDurationSec=20s
+# Elastic: oomd acts only at TRUE exhaustion (swap ~full + sustained-severe PSI),
+# never on transient load with RAM free. Was 80% / 50% / 20s.
+SwapUsedLimit=90%
+DefaultMemoryPressureLimit=90%
+DefaultMemoryPressureDurationSec=60s
 EOF
         ;;
     "systemd/system/user-.slice.d/50-oomd.conf")
@@ -104,17 +107,24 @@ EOF
 [Slice]
 ManagedOOMSwap=kill
 ManagedOOMMemoryPressure=kill
-ManagedOOMMemoryPressureLimit=50%
-ManagedOOMMemoryPressureDurationSec=20s
+# Kill only on SUSTAINED (60s) SEVERE (90% PSI) stall — not 50%/20s, which killed
+# >3 concurrent agents under normal reclaim. Still enabled as a real-runaway backstop.
+ManagedOOMMemoryPressureLimit=90%
+ManagedOOMMemoryPressureDurationSec=60s
 EOF
         ;;
     "systemd/system/user-.slice.d/50-memory.conf")
         cat <<'EOF'
 [Slice]
 MemoryAccounting=yes
-MemoryHigh=48G
-MemoryMax=56G
-MemorySwapMax=8G
+# Elastic/liquid: use all RAM, throttle/kill only near true exhaustion. Percentages
+# adapt to any host (were host-specific 48G/56G/8G for a 62 GiB box).
+#   MemoryHigh=90%  soft reclaim only at 90% (48G caused the multi-GB-pgscan "stuck").
+#   MemoryMax=95%   hard backstop below full so a runaway can't freeze the box.
+#   MemorySwapMax=infinity  swap/zram used elastically instead of OOM-killing (was 8G).
+MemoryHigh=90%
+MemoryMax=95%
+MemorySwapMax=infinity
 TasksMax=infinity
 EOF
         ;;
@@ -145,6 +155,18 @@ vm.overcommit_ratio = 80
 vm.vfs_cache_pressure = 50
 vm.dirty_background_ratio = 5
 vm.dirty_ratio = 15
+EOF
+        ;;
+    "security/limits.d/99-nproc-elastic.conf")
+        cat <<'EOF'
+# Raise the per-user process/thread ceiling so many concurrent thread-heavy
+# agents (node / Claude Code) never hit "fork: retry: Resource temporarily
+# unavailable". Overrides the low distro default (nproc 512/1024). 99- prefix
+# makes pam_limits read this LAST so it wins. cgroup TasksMax stays the real
+# ceiling (infinity on the user slice); this removes the artificial pam ceiling.
+*		soft	nproc	65536
+*		hard	nproc	65536
+root		soft	nproc	65536
 EOF
         ;;
     *)
@@ -201,8 +223,9 @@ preflight() {
     local mem_gib=$(( mem_kb / 1024 / 1024 ))
     log "MemTotal: ${mem_kb} kB (~${mem_gib} GiB)"
     if (( mem_gib < 16 )); then
-        warn "Total RAM is only ${mem_gib} GiB. The default MemoryHigh=48G / MemoryMax=56G will be too tight."
-        warn "Edit oom-hardening.sh: search for 'MemoryHigh=48G' and adjust before applying."
+        warn "Total RAM is only ${mem_gib} GiB. Caps are percentage-based (MemoryHigh=90%,"
+        warn "MemoryMax=95%) so they self-adapt — but on a small host, enable zram (compressed"
+        warn "swap) so memory stays elastic under load instead of hitting the cap."
     fi
 
     # systemd-oomd availability
@@ -335,14 +358,14 @@ apply_live_cgroup_limits() {
         return 0
     fi
     if [[ "$MODE" == "dry-run" ]]; then
-        warn "  WOULD: systemctl set-property user-1000.slice MemoryAccounting=yes MemoryHigh=48G MemoryMax=56G MemorySwapMax=8G"
+        warn "  WOULD: systemctl set-property user-1000.slice MemoryAccounting=yes MemoryHigh=90% MemoryMax=95% MemorySwapMax=infinity"
         return 0
     fi
     systemctl set-property user-1000.slice \
         MemoryAccounting=yes \
-        MemoryHigh=48G \
-        MemoryMax=56G \
-        MemorySwapMax=8G
+        MemoryHigh=90% \
+        MemoryMax=95% \
+        MemorySwapMax=infinity
     ok "  applied."
     systemctl show user-1000.slice -p MemoryMax,MemoryHigh,MemorySwapMax,MemoryAccounting \
         | sed 's/^/    /'
