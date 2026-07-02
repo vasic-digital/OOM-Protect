@@ -58,6 +58,8 @@ readonly -a MANAGED_FILES=(
     "systemd/coredump.conf.d/50-keep.conf|0644"
     "sysctl.d/99-mem.conf|0644"
     "security/limits.d/99-nproc-elastic.conf|0644"
+    "systemd/zram-generator.conf|0644"
+    "sysctl.d/99-zram-swappiness.conf|0644"
 )
 
 # ---------- output helpers -----------------------------------------------------
@@ -167,6 +169,23 @@ EOF
 *		soft	nproc	65536
 *		hard	nproc	65536
 root		soft	nproc	65536
+EOF
+        ;;
+    "systemd/zram-generator.conf")
+        cat <<'EOF'
+# Elastic compressed swap: zstd, half of RAM (stored ~3x compressed), high
+# priority so pages go to fast RAM-backed zram before disk -> large elastic
+# headroom so memory rarely reaches the cgroup caps and never disk-thrashes.
+[zram0]
+zram-size = ram / 2
+compression-algorithm = zstd
+swap-priority = 100
+EOF
+        ;;
+    "sysctl.d/99-zram-swappiness.conf")
+        cat <<'EOF'
+# With fast zram swap present, prefer swapping to it over reclaim/kill.
+vm.swappiness = 150
 EOF
         ;;
     *)
@@ -379,6 +398,24 @@ restart_journald() {
     fi
     systemctl restart systemd-journald
     ok "  restarted."
+}
+
+enable_zram() {
+    hdr "7b. Enable zram (elastic compressed swap)"
+    if [[ "$MODE" == "dry-run" ]]; then
+        warn "  WOULD: apt-get install -y zram-generator; systemctl start systemd-zram-setup@zram0.service"
+        return 0
+    fi
+    if [ ! -x /usr/lib/systemd/system-generators/zram-generator ] && command -v apt-get >/dev/null 2>&1; then
+        apt-get install -y zram-generator </dev/null >>"$LOG_FILE" 2>&1 \
+            || warn "  zram-generator install failed — install it manually to activate zram."
+    fi
+    systemctl daemon-reload
+    if systemctl start systemd-zram-setup@zram0.service >>"$LOG_FILE" 2>&1; then
+        ok "  zram active: $(swapon --show=NAME,SIZE,PRIO 2>/dev/null | awk '/zram/{print $1" "$2" prio "$3}' | head -1)"
+    else
+        warn "  zram not started (kernel module or package missing?); config is in place for next boot."
+    fi
 }
 
 apply_sysctls() {
@@ -609,6 +646,7 @@ main() {
     apply_live_cgroup_limits
     restart_journald
     apply_sysctls
+    enable_zram
     logind_note
     verify
 
